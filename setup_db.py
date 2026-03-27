@@ -140,9 +140,9 @@ Entendemos las dificultades. Tenemos opciones para que el cliente no quede despr
 # ── Ontología de Diferenciadores ─────────────────────────────────────────────
 
 ONTOLOGIA_DIFERENCIADORES = """
-# Ontología de Diferenciadores Competitivos — Santalucía v1.0
+# Ontología de Diferenciadores Competitivos — Seguros Mundial v1.0
 
-Esta ontología contiene las ventajas de Santalucía frente a los principales competidores
+Esta ontología contiene las ventajas de Seguros Mundial frente a los principales competidores
 por ramo. Úsala SOLO cuando el cliente mencione explícitamente a un competidor.
 No la uses para iniciar la conversación — es un recurso de apoyo ante objeciones comparativas.
 
@@ -150,81 +150,81 @@ No la uses para iniciar la conversación — es un recurso de apoyo ante objecio
 
 ## RAMO: VIDA
 
-### Santalucía vs Mapfre
-- Santalucía ofrece revisión médica simplificada para capitales de hasta 150.000€, mientras Mapfre la exige desde 100.000€.
-- El servicio de orientación médica telefónica de Santalucía está disponible 24h sin coste adicional; en Mapfre tiene franquicia de uso.
-- Santalucía incluye cobertura de enfermedades graves (cáncer, infarto, ACV) desde el primer año sin período de carencia adicional.
-- La atención al beneficiario en caso de siniestro es gestionada por un gestor personal dedicado; Mapfre lo canaliza por call center general.
+### Seguros Mundial vs Sura
+- Seguros Mundial ofrece revisión médica simplificada para capitales de hasta COL$634.200.000, mientras Sura la exige desde COL$422.800.000.
+- El servicio de orientación médica telefónica de Seguros Mundial está disponible 24h sin coste adicional; en Sura tiene franquicia de uso.
+- Seguros Mundial incluye cobertura de enfermedades graves (cáncer, infarto, ACV) desde el primer año sin período de carencia adicional.
+- La atención al beneficiario en caso de siniestro es gestionada por un gestor personal dedicado; Sura lo canaliza por call center general.
 
-### Santalucía vs Reale
-- Santalucía tiene una red de mediadores especializados en vida con formación certificada; Reale combina canal directo y mediación sin especialización específica.
-- La póliza de vida de Santalucía permite modificar el capital asegurado anualmente sin nuevo proceso de suscripción, algo que Reale no permite.
-- Santalucía cubre fallecimiento por cualquier causa desde el primer día; Reale aplica carencia de 6 meses para enfermedades preexistentes no declaradas.
+### Seguros Mundial vs Reale
+- Seguros Mundial tiene una red de mediadores especializados en vida con formación certificada; Reale combina canal directo y mediación sin especialización específica.
+- La póliza de vida de Seguros Mundial permite modificar el capital asegurado anualmente sin nuevo proceso de suscripción, algo que Reale no permite.
+- Seguros Mundial cubre fallecimiento por cualquier causa desde el primer día; Reale aplica carencia de 6 meses para enfermedades preexistentes no declaradas.
 
-### Santalucía vs Mutua Madrileña
-- Santalucía es especialista en seguros de vida y decesos con más de 90 años de historia; Mutua es principalmente una aseguradora de auto que diversificó.
-- El capital mínimo asegurado en vida de Santalucía es más flexible (desde 15.000€); Mutua exige mínimos más altos para sus productos de vida.
-- Santalucía ofrece un plan de ahorro complementario vinculable a la póliza de vida; Mutua no dispone de este producto combinado.
+### Seguros Mundial vs Mutua Madrileña
+- Seguros Mundial es especialista en seguros de vida y decesos con más de 90 años de historia; Mutua es principalmente una aseguradora de auto que diversificó.
+- El capital mínimo asegurado en vida de Seguros Mundial es más flexible (desde COL$63.420.000); Mutua exige mínimos más altos para sus productos de vida.
+- Seguros Mundial ofrece un plan de ahorro complementario vinculable a la póliza de vida; Mutua no dispone de este producto combinado.
 
 ---
 
 ## RAMO: AUTO
 
-### Santalucía vs Mapfre
-- Santalucía incluye vehículo de sustitución desde el primer día en talleres concertados; Mapfre lo ofrece solo a partir de reparaciones superiores a 48h.
-- La asistencia en carretera de Santalucía cubre remolque ilimitado en kilómetros; Mapfre limita a 500 km en su póliza estándar.
-- Santalucía no aplica franquicia en el primer siniestro del año para clientes con más de 2 años de antigüedad; Mapfre la aplica siempre.
-- El proceso de peritación de Santalucía garantiza resolución en 72h; Mapfre puede tardar hasta 7 días hábiles.
+### Seguros Mundial vs Sura
+- Seguros Mundial incluye vehículo de sustitución desde el primer día en talleres concertados; Sura lo ofrece solo a partir de reparaciones superiores a 48h.
+- La asistencia en carretera de Seguros Mundial cubre remolque ilimitado en kilómetros; Sura limita a 500 km en su póliza estándar.
+- Seguros Mundial no aplica franquicia en el primer siniestro del año para clientes con más de 2 años de antigüedad; Sura la aplica siempre.
+- El proceso de peritación de Seguros Mundial garantiza resolución en 72h; Sura puede tardar hasta 7 días hábiles.
 
-### Santalucía vs Reale
-- Santalucía dispone de red propia de talleres con garantía de reparación de por vida; Reale trabaja con talleres externos sin garantía extendida.
-- El seguro de auto de Santalucía incluye cobertura de accesorios y equipamiento especial hasta 3.000€ sin coste adicional; Reale lo excluye de la cobertura básica.
-- Santalucía ofrece descuento familiar acumulable del 15% al asegurar dos o más vehículos; Reale aplica un descuento máximo del 8%.
+### Seguros Mundial vs Reale
+- Seguros Mundial dispone de red propia de talleres con garantía de reparación de por vida; Reale trabaja con talleres externos sin garantía extendida.
+- El seguro de auto de Seguros Mundial incluye cobertura de accesorios y equipamiento especial hasta COL$12.684.000 sin coste adicional; Reale lo excluye de la cobertura básica.
+- Seguros Mundial ofrece descuento familiar acumulable del 15% al asegurar dos o más vehículos; Reale aplica un descuento máximo del 8%.
 
-### Santalucía vs Mutua Madrileña
-- Santalucía tiene presencia nacional con atención presencial en más de 4.000 puntos; Mutua concentra su red principalmente en Madrid y grandes ciudades.
-- La app de Santalucía permite declarar un siniestro con fotos en menos de 3 minutos y recibir confirmación inmediata; la app de Mutua no tiene esta funcionalidad.
-- Santalucía permite contratar a conductores noveles (menos de 2 años de carnet) con recargo menor que Mutua para el mismo perfil de riesgo.
+### Seguros Mundial vs Mutua Madrileña
+- Seguros Mundial tiene presencia nacional con atención presencial en más de 4.000 puntos; Mutua concentra su red principalmente en Madrid y grandes ciudades.
+- La app de Seguros Mundial permite declarar un siniestro con fotos en menos de 3 minutos y recibir confirmación inmediata; la app de Mutua no tiene esta funcionalidad.
+- Seguros Mundial permite contratar a conductores noveles (menos de 2 años de carnet) con recargo menor que Mutua para el mismo perfil de riesgo.
 
 ---
 
 ## RAMO: HOGAR
 
-### Santalucía vs Mapfre
-- Santalucía cubre daños por agua (tuberías, filtraciones) sin límite de antigüedad de la instalación; Mapfre excluye instalaciones con más de 20 años.
-- El servicio de hogar de Santalucía incluye hasta 4 visitas anuales de mantenimiento preventivo; Mapfre solo cubre reparaciones correctivas.
-- Santalucía cubre robo fuera del hogar (en vehículo, en vacaciones) hasta 3.000€; Mapfre lo excluye en la modalidad estándar.
-- La cobertura de responsabilidad civil del hogar de Santalucía alcanza 300.000€; Mapfre estándar cubre hasta 150.000€.
+### Seguros Mundial vs Sura
+- Seguros Mundial cubre daños por agua (tuberías, filtraciones) sin límite de antigüedad de la instalación; Sura excluye instalaciones con más de 20 años.
+- El servicio de hogar de Seguros Mundial incluye hasta 4 visitas anuales de mantenimiento preventivo; Sura solo cubre reparaciones correctivas.
+- Seguros Mundial cubre robo fuera del hogar (en vehículo, en vacaciones) hasta COL$12.684.000; Sura lo excluye en la modalidad estándar.
+- La cobertura de responsabilidad civil del hogar de Seguros Mundial alcanza COL$1.268.400.000; Sura estándar cubre hasta COL$634.200.000.
 
-### Santalucía vs Reale
-- Santalucía no aplica depreciación por antigüedad en electrodomésticos (valor de reposición a nuevo); Reale aplica depreciación desde el tercer año.
-- El servicio de emergencias de Santalucía tiene tiempo de respuesta garantizado de 2h; Reale no garantiza tiempo máximo de respuesta.
-- Santalucía cubre daños estéticos (manchas, arañazos en parquet) que Reale excluye expresamente de su póliza de hogar básica.
+### Seguros Mundial vs Reale
+- Seguros Mundial no aplica depreciación por antigüedad en electrodomésticos (valor de reposición a nuevo); Reale aplica depreciación desde el tercer año.
+- El servicio de emergencias de Seguros Mundial tiene tiempo de respuesta garantizado de 2h; Reale no garantiza tiempo máximo de respuesta.
+- Seguros Mundial cubre daños estéticos (manchas, arañazos en parquet) que Reale excluye expresamente de su póliza de hogar básica.
 
-### Santalucía vs Mutua Madrileña
-- Santalucía incluye cobertura de placas solares y equipos de aerotermia como parte del continente sin coste adicional; Mutua los excluye o cobra suplemento.
-- El capital de contenido mínimo de Santalucía es más adaptable al perfil real del cliente; Mutua aplica capitales mínimos más elevados que no siempre se ajustan a la realidad.
-- Santalucía ofrece extensión de cobertura a segunda residencia con el 30% de prima adicional; Mutua requiere una póliza independiente.
+### Seguros Mundial vs Mutua Madrileña
+- Seguros Mundial incluye cobertura de placas solares y equipos de aerotermia como parte del continente sin coste adicional; Mutua los excluye o cobra suplemento.
+- El capital de contenido mínimo de Seguros Mundial es más adaptable al perfil real del cliente; Mutua aplica capitales mínimos más elevados que no siempre se ajustan a la realidad.
+- Seguros Mundial ofrece extensión de cobertura a segunda residencia con el 30% de prima adicional; Mutua requiere una póliza independiente.
 
 ---
 
 ## RAMO: SALUD
 
-### Santalucía vs Mapfre
-- Santalucía tiene acuerdo con más de 40.000 especialistas en toda España; Mapfre Salud cuenta con 35.000, con menor presencia en zonas rurales.
-- Santalucía no aplica períodos de carencia para urgencias desde el primer día; Mapfre aplica 30 días de carencia para algunas especialidades.
-- La teleconsulta de Santalucía está disponible 24h con médico generalista y especialista; Mapfre solo garantiza generalista en horario nocturno.
-- Santalucía cubre segunda opinión médica internacional sin coste adicional; Mapfre lo ofrece como suplemento de pago.
+### Seguros Mundial vs Sura
+- Seguros Mundial tiene acuerdo con más de 40.000 especialistas en toda España; Sura Salud cuenta con 35.000, con menor presencia en zonas rurales.
+- Seguros Mundial no aplica períodos de carencia para urgencias desde el primer día; Sura aplica 30 días de carencia para algunas especialidades.
+- La teleconsulta de Seguros Mundial está disponible 24h con médico generalista y especialista; Sura solo garantiza generalista en horario nocturno.
+- Seguros Mundial cubre segunda opinión médica internacional sin coste adicional; Sura lo ofrece como suplemento de pago.
 
-### Santalucía vs Reale
-- Santalucía incluye salud mental (psicólogo, psiquiatra) desde la póliza básica; Reale lo ofrece solo en modalidades premium con coste adicional.
-- La cobertura dental de Santalucía incluye una limpieza anual gratuita y descuentos del 30% en tratamientos; Reale ofrece solo descuentos del 15%.
-- Santalucía no tiene límite de consultas anuales por especialidad; Reale limita algunas especialidades a 6 visitas anuales.
+### Seguros Mundial vs Reale
+- Seguros Mundial incluye salud mental (psicólogo, psiquiatra) desde la póliza básica; Reale lo ofrece solo en modalidades premium con coste adicional.
+- La cobertura dental de Seguros Mundial incluye una limpieza anual gratuita y descuentos del 30% en tratamientos; Reale ofrece solo descuentos del 15%.
+- Seguros Mundial no tiene límite de consultas anuales por especialidad; Reale limita algunas especialidades a 6 visitas anuales.
 
-### Santalucía vs Mutua Madrileña
-- Santalucía tiene cobertura nacional homogénea; Mutua tiene mayor concentración de cuadro médico en Madrid con cobertura más limitada en otras comunidades.
-- Santalucía permite añadir a familiares directos con condiciones preferenciales sin nuevo proceso médico; Mutua requiere cuestionario de salud individual para cada incorporación.
-- El copago de Santalucía en modalidad con copago es fijo (3€ por consulta); Mutua aplica copagos variables según especialidad que pueden llegar a 15€.
+### Seguros Mundial vs Mutua Madrileña
+- Seguros Mundial tiene cobertura nacional homogénea; Mutua tiene mayor concentración de cuadro médico en Madrid con cobertura más limitada en otras comunidades.
+- Seguros Mundial permite añadir a familiares directos con condiciones preferenciales sin nuevo proceso médico; Mutua requiere cuestionario de salud individual para cada incorporación.
+- El copago de Seguros Mundial en modalidad con copago es fijo (COL$12.684 por consulta); Mutua aplica copagos variables según especialidad que pueden llegar a COL$63.420.
 
 ---
 
@@ -248,7 +248,7 @@ SYSTEM_PROMPT = """Eres un asistente experto en retención de clientes para ejec
 4. **Pregunta el motivo de baja** que el cliente está manifestando.
 5. **Consulta la ontología de reglas** usando la tool `ontologia_reglas` para obtener los argumentos de retención disponibles.
 6. **Elige UN solo argumento** — el que consideres más fuerte dado el perfil de la póliza y el motivo de baja — y sugiere solo ese al ejecutivo. Sigue las instrucciones de la ontología para elegir y avanzar según la reacción del cliente.
-7. **Si el cliente menciona explícitamente un competidor** (Mapfre, Reale, Mutua u otro), usa la tool `ontologia_diferenciadores` para obtener las ventajas de Santalucía frente a ese competidor en el ramo correspondiente. Elige solo el diferenciador más relevante y preséntalo con el mismo formato de argumento.
+7. **Si el cliente menciona explícitamente un competidor** (Sura, Reale, Mutua u otro), usa la tool `ontologia_diferenciadores` para obtener las ventajas de Seguros Mundial frente a ese competidor en el ramo correspondiente. Elige solo el diferenciador más relevante y preséntalo con el mismo formato de argumento.
 8. **Acompaña al ejecutivo** hasta que la situación se resuelva (retención lograda o baja confirmada).
 
 ## Formato de los argumentos — OBLIGATORIO
@@ -267,6 +267,21 @@ Luego, en una línea aparte, puedes agregar una breve nota táctica para el ejec
 - **PROHIBIDO dar varios argumentos a la vez.** Uno por turno. La conversación debe fluir naturalmente.
 - **PROHIBIDO repetir un argumento** que el cliente ya rechazó en esta misma conversación.
 - Si la ontología no contiene argumentos para la situación específica, díselo honestamente al ejecutivo en lugar de improvisar.
+
+## Documentos adjuntos
+
+El ejecutivo puede adjuntar documentos (PDFs, imágenes) al chat. Cuando lo haga, recibirás un mensaje que comienza con:
+
+`[Documento adjunto analizado: <nombre_archivo>]`
+
+seguido del análisis completo del documento realizado por un sistema externo. En ese caso:
+
+- **Usa directamente esa información** — no digas que no puedes analizar imágenes ni documentos.
+- Identifica el tipo de documento (póliza, oferta de competidor, queja, otro).
+- Si es una **oferta de un competidor**: úsala para reforzar los argumentos de retención y consulta `ontologia_diferenciadores` si el competidor está mencionado.
+- Si es una **póliza del cliente**: extrae los datos relevantes para contextualizar la conversación.
+- Si es una **queja**: reconócela y usa `ontologia_reglas` para el motivo "Mala experiencia".
+- Presenta al ejecutivo un resumen breve del documento y sugiere los pasos a seguir.
 
 ## Reglas generales
 

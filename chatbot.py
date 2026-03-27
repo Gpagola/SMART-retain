@@ -2,7 +2,7 @@
 
 import argparse
 import os
-import psycopg
+from psycopg_pool import ConnectionPool
 from dotenv import load_dotenv
 
 # [LANGCHAIN] Modelo de lenguaje
@@ -29,6 +29,42 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+# ── Connection Pool ───────────────────────────────────────────────────────────
+_pool: ConnectionPool | None = None
+
+def get_pool() -> ConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = ConnectionPool(DATABASE_URL, min_size=2, max_size=5, open=True)
+    return _pool
+
+
+# ── Ontology Cache ────────────────────────────────────────────────────────────
+_ontology_cache: dict = {}
+
+def preload_ontologies():
+    """Carga ontologías estáticas en memoria al arrancar para evitar consultas repetidas."""
+    names = ["ontologia-reglas", "ontologia-diferenciadores"]
+    with get_pool().connection() as conn:
+        with conn.cursor() as cur:
+            for name in names:
+                cur.execute("""
+                    SELECT contenido FROM ontologias
+                    WHERE nombre = %s AND activo = TRUE
+                    ORDER BY version DESC LIMIT 1
+                """, (name,))
+                row = cur.fetchone()
+                if row:
+                    _ontology_cache[name] = row[0]
+
+def invalidate_ontology_cache(nombre: str = None):
+    """Invalida el cache tras actualizar una ontología desde el admin."""
+    if nombre:
+        _ontology_cache.pop(nombre, None)
+    else:
+        _ontology_cache.clear()
+
+
 # ── Carga del System Prompt desde la BD ───────────────────────────────────────
 # El prompt ya no vive en el código — se almacena en la tabla ontologias
 # bajo el nombre "system-prompt". Así puede editarse desde un frontend
@@ -36,7 +72,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 def cargar_system_prompt() -> str:
     """Carga la versión activa del system prompt desde la tabla ontologias."""
-    with psycopg.connect(DATABASE_URL) as conn:
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT contenido FROM ontologias
@@ -60,7 +96,7 @@ def buscar_poliza(numero_poliza: str) -> str:
     """Busca los datos de una póliza por su número.
     Retorna ramo, fecha de alta, antigüedad y rentabilidad.
     Usar cuando el ejecutivo proporcione el número de póliza del cliente."""
-    with psycopg.connect(DATABASE_URL) as conn:
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT numero_poliza, ramo, fecha_alta, rentabilidad
@@ -91,7 +127,10 @@ def ontologia_reglas(nombre: str = "ontologia-reglas") -> str:
     """Consulta el contenido de una ontología de retención por su nombre.
     Usar para obtener argumentos y contra-argumentos según el motivo de baja del cliente.
     Por defecto consulta 'ontologia-reglas'."""
-    with psycopg.connect(DATABASE_URL) as conn:
+    if nombre in _ontology_cache:
+        return _ontology_cache[nombre]
+
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT contenido FROM ontologias
@@ -109,10 +148,14 @@ def ontologia_reglas(nombre: str = "ontologia-reglas") -> str:
 
 @tool
 def ontologia_diferenciadores() -> str:
-    """Consulta las ventajas competitivas de Santalucía frente a la competencia (Mapfre, Reale, Mutua).
+    """Consulta las ventajas competitivas de Seguros Mundial frente a la competencia (Sura, Reale, Mutua).
     Usar SOLO cuando el cliente mencione explícitamente una aseguradora competidora.
     El agente elige el diferenciador más relevante según el ramo y competidor mencionado."""
-    with psycopg.connect(DATABASE_URL) as conn:
+    cache_key = "ontologia-diferenciadores"
+    if cache_key in _ontology_cache:
+        return _ontology_cache[cache_key]
+
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT contenido FROM ontologias
@@ -128,11 +171,20 @@ def ontologia_diferenciadores() -> str:
     return row[0]
 
 
+@tool
+def analizar_documento(contenido: str) -> str:
+    """Analiza el contenido extraído de un documento (PDF o imagen) subido por el ejecutivo.
+    Determina el tipo de documento (póliza, oferta de competidor, queja, otro) y extrae
+    la información relevante para el proceso de retención.
+    Usar cuando el ejecutivo adjunte un archivo al chat."""
+    return contenido
+
+
 # ── Construcción del agente ───────────────────────────────────────────────────
 
 def build_agent(checkpointer):
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-    tools = [buscar_poliza, ontologia_reglas, ontologia_diferenciadores]
+    tools = [buscar_poliza, ontologia_reglas, ontologia_diferenciadores, analizar_documento]
 
     # Carga el system prompt desde la BD al iniciar el agente
     system_prompt = cargar_system_prompt()
