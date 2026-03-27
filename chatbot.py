@@ -172,6 +172,17 @@ def ontologia_diferenciadores() -> str:
 
 
 @tool
+def sugerir_respuestas(opciones: list) -> str:
+    """Muestra botones de respuesta rápida al ejecutivo en la interfaz de chat.
+    Llamar SIEMPRE al final de cada respuesta con 2-5 opciones cortas relevantes al contexto.
+    Considera: motivo de baja, ramo, competidor mencionado, argumentos ya presentados.
+    Usa los nombres de competidores reales cuando corresponda: Sura, Reale, Mutua Madrileña.
+    opciones: lista de strings cortos, máximo 5 palabras cada uno.
+    Ejemplo: ["Sí, acepta", "Lo rechaza", "El precio es alto", "Menciona Sura"]"""
+    return "[BOTONES: " + " | ".join(str(o).strip() for o in opciones[:5]) + "]"
+
+
+@tool
 def analizar_documento(contenido: str) -> str:
     """Analiza el contenido extraído de un documento (PDF o imagen) subido por el ejecutivo.
     Determina el tipo de documento (póliza, oferta de competidor, queja, otro) y extrae

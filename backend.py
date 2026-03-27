@@ -4,6 +4,7 @@ Expone el agente LangGraph como API REST para el frontend React.
 """
 
 import os
+import re
 import uuid
 import base64
 import json
@@ -41,6 +42,71 @@ def get_agent():
         _agent = build_agent(_checkpointer)
         preload_ontologies()
     return _agent
+
+
+# ── Generador de sugerencias rápidas ─────────────────────────────────────────
+
+def _generar_sugerencias(session_id: str) -> list:
+    """Genera 3-5 respuestas rápidas usando el historial de la sesión."""
+    try:
+        state = get_agent().get_state({"configurable": {"thread_id": session_id}})
+        msgs = state.values.get("messages", [])
+
+        lines = []
+        for m in msgs[-8:]:
+            if not hasattr(m, "content") or not isinstance(m.content, str) or not m.content.strip():
+                continue
+            if m.type == "human":
+                lines.append(f"Ejecutivo: {m.content[:300]}")
+            elif m.type == "ai":
+                lines.append(f"Asistente: {m.content[:300]}")
+
+        # Necesitamos al menos 2 turnos completos (ejecutivo + asistente x2) para sugerir algo útil
+        human_turns = sum(1 for l in lines if l.startswith("Ejecutivo:"))
+        if not lines or human_turns < 2:
+            return []
+
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": (
+                "Conversación de retención de seguros:\n"
+                + "\n".join(lines)
+                + "\n\nBasándote SOLO en lo que se ha dicho en esta conversación, "
+                "genera 3-4 frases MUY cortas (máximo 5 palabras) que representen "
+                "lo que el CLIENTE podría estar respondiendo en este momento, "
+                "para que el ejecutivo las seleccione y se las transmita al asistente. "
+                "Deben sonar como el cliente hablando, no como el ejecutivo. "
+                "Las frases deben tener sentido concreto en este punto del diálogo. "
+                "Si no hay contexto suficiente, devuelve []. "
+                "No inventes competidores ni conceptos que no aparezcan en la conversación. "
+                'Responde SOLO con un JSON array de strings, sin markdown. '
+                'Ejemplo: ["Me parece bien", "El precio es muy alto", "Me lo pienso", "Prefiero Sura"]'
+            )}],
+            max_tokens=80,
+            temperature=0.2,
+        )
+        raw = response.choices[0].message.content.strip()
+        print(f"[Sugerencias] raw GPT response: {raw!r}")
+        # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+        raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
+        result = json.loads(raw)
+        print(f"[Sugerencias] parsed: {result}")
+        if isinstance(result, list):
+            suggestions = [str(s).strip() for s in result[:5] if s]
+        elif isinstance(result, dict):
+            suggestions = []
+            for v in result.values():
+                if isinstance(v, list):
+                    suggestions = [str(s).strip() for s in v[:5] if s]
+                    break
+        else:
+            suggestions = []
+        print(f"[Sugerencias] final: {suggestions}")
+        return suggestions
+    except Exception as e:
+        print(f"[Sugerencias] error: {e}")
+    return []
 
 
 # ── Endpoints de chat ─────────────────────────────────────────────────────────
@@ -81,6 +147,15 @@ def chat():
                     and chunk.content
                 ):
                     yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+
+            # Post-proceso: generar sugerencias con el historial actualizado
+            suggestions = _generar_sugerencias(session_id)
+            print(f"[Chat] suggestions to send: {suggestions}")
+            if suggestions:
+                payload = json.dumps({'suggestions': suggestions})
+                print(f"[Chat] sending SSE: {payload}")
+                yield f"data: {payload}\n\n"
+
             yield "data: [DONE]\n\n"
         except Exception as e:
             print(f"ERROR en /api/chat: {e}")

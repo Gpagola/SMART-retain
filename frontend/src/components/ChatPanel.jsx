@@ -26,9 +26,10 @@ export default function ChatPanel() {
   const [messages, setMessages]     = useState([])
   const [input, setInput]           = useState("")
   const [loading, setLoading]       = useState(false)
-  const [poliza, setPoliza]         = useState(null)
-  const [attachedFile, setAttachedFile] = useState(null)  // { file, name }
-  const [isStreaming, setIsStreaming] = useState(false)
+  const [poliza, setPoliza]           = useState(null)
+  const [attachedFile, setAttachedFile] = useState(null)
+  const [isStreaming, setIsStreaming]   = useState(false)
+  const [suggestions, setSuggestions]   = useState([])
   const bottomRef  = useRef(null)
   const textareaRef = useRef(null)
   const abortRef   = useRef(null)
@@ -61,6 +62,7 @@ export default function ChatPanel() {
           const parsed = JSON.parse(data)
           if (parsed.error) throw new Error(parsed.error)
           if (parsed.token) onToken(parsed.token)
+          if (parsed.suggestions) setSuggestions(parsed.suggestions)
         } catch (e) {
           if (e.message !== "SyntaxError") throw e
         }
@@ -117,6 +119,7 @@ export default function ChatPanel() {
     const fileToSend = attachedFile
     setInput("")
     setAttachedFile(null)
+    setSuggestions([])
     if (fileInputRef.current) fileInputRef.current.value = ""
 
     const displayText = fileToSend
@@ -262,6 +265,23 @@ export default function ChatPanel() {
       </div>
 
       <div className="input-area">
+        {suggestions.length > 0 && !loading && (
+          <div className="suggestions">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                className="suggestion-btn"
+                onClick={() => {
+                  setInput(s)
+                  setSuggestions([])
+                  textareaRef.current?.focus()
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         {attachedFile && (
           <div className="file-preview">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{flexShrink:0}}>

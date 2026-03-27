@@ -220,6 +220,33 @@
 
 .stop-btn:hover { background: var(--bg-hover); color: var(--text); }
 
+/* ── Suggestion buttons ── */
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.suggestion-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-focus);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.suggestion-btn:hover {
+  background: var(--avatar-bg);
+  color: #fff;
+  border-color: var(--avatar-bg);
+}
+
 .attach-btn {
   width: 30px;
   height: 30px;
