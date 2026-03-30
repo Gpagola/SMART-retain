@@ -28,7 +28,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.base import BaseCheckpointSaver, CheckpointTuple
 
 
-# ── Carga de variables de entorno ────────────────────────────────────────────
+# ── Carga de variab les de entorno ────────────────────────────────────────────
 load_dotenv()
 
 DB_CONFIG = {
