@@ -1,0 +1,46 @@
+name: Deploy Smart Retain
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compilar frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: /sr/api
+        run: |
+          npm install
+          npm run build
+
+      - name: Subir archivos al servidor
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -az --delete --exclude='.venv' --exclude='node_modules' --exclude='__pycache__' --exclude='.git' --exclude='*.pyc' --exclude='.env' --exclude='.github'
+          path: ./
+          remote_path: /opt/smartretain/
+          remote_host: sb0.braintrust-cs.com
+          remote_user: debian
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Actualizar dependencias y reiniciar Flask
+        uses: appleboy/ssh-action@v1
+        with:
+          host: sb0.braintrust-cs.com
+          username: debian
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            /opt/smartretain/.venv/bin/pip install -q -r /opt/smartretain/requirements.txt
+            sudo systemctl restart smartretain
