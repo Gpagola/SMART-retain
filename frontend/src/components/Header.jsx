@@ -24,7 +24,7 @@ function MoonIcon() {
   )
 }
 
-export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase, theme, onToggleTheme, loading }) {
+export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase, theme, onToggleTheme, loading, autopilotMode, onToggleAutopilot }) {
   const isDark = theme === "dark"
 
   return (
@@ -41,6 +41,24 @@ export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase
         <span className="header-title">Smart Retain</span>
       </div>
       <div className="header-right">
+        {/* Toggle Manual / Autopilot */}
+        <div className="mode-toggle">
+          <button
+            className={`mode-btn ${!autopilotMode ? "active" : ""}`}
+            onClick={() => autopilotMode && onToggleAutopilot()}
+            title="Modo manual"
+          >
+            Manual
+          </button>
+          <button
+            className={`mode-btn ${autopilotMode ? "active autopilot" : ""}`}
+            onClick={() => !autopilotMode && onToggleAutopilot()}
+            title="Modo autopilot"
+          >
+            ⚡ Autopilot
+          </button>
+        </div>
+
         <button className="new-case-btn" onClick={onNewCase} title="Nuevo caso">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="5" x2="12" y2="19"/>

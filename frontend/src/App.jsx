@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import Header from "./components/Header"
 import AdminPanel from "./components/AdminPanel"
 import ChatPanel from "./components/ChatPanel"
+import AutopilotPanel from "./components/AutopilotPanel"
 import "./App.css"
 
 const MIN_WIDTH = 380
@@ -14,6 +15,7 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0)
   const [theme, setTheme] = useState("light")
   const [chatLoading, setChatLoading] = useState(false)
+  const [autopilotMode, setAutopilotMode] = useState(false)
   const dragging = useRef(false)
   const startX = useRef(0)
   const startWidth = useRef(0)
@@ -66,15 +68,20 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         loading={chatLoading}
+        autopilotMode={autopilotMode}
+        onToggleAutopilot={() => setAutopilotMode(m => !m)}
       />
       <div className="app-body">
-        {adminOpen && (
+        {adminOpen && !autopilotMode && (
           <>
             <AdminPanel onSaved={handleReset} width={adminWidth} />
             <div className="resize-handle" onMouseDown={onMouseDown} />
           </>
         )}
-        <ChatPanel key={resetKey} onLoadingChange={setChatLoading} />
+        {autopilotMode
+          ? <AutopilotPanel key={`ap-${resetKey}`} onLoadingChange={setChatLoading} />
+          : <ChatPanel key={resetKey} onLoadingChange={setChatLoading} />
+        }
       </div>
     </div>
   )

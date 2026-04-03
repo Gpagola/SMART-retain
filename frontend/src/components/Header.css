@@ -146,3 +146,49 @@
 .switch-sun  { right: 6px; }
 
 .theme-switch:hover { border-color: var(--border-focus); }
+
+/* ── Mode toggle (Manual / Autopilot) ── */
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.mode-btn {
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.mode-btn:hover { background: var(--border); color: var(--text); }
+
+.mode-btn.active {
+  background: #e8eef8;
+  color: #1a4f9c;
+  font-weight: 700;
+}
+
+.mode-btn.active.autopilot {
+  background: linear-gradient(135deg, #4158d0, #c850c0);
+  color: #fff;
+}
+
+[data-theme="dark"] .mode-btn.active {
+  background: #1e3a6e;
+  color: #90b8f8;
+}
+
+[data-theme="dark"] .mode-btn.active.autopilot {
+  background: linear-gradient(135deg, #4158d0, #c850c0);
+  color: #fff;
+}

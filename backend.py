@@ -8,6 +8,7 @@ import re
 import uuid
 import base64
 import json
+import time
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ from openai import OpenAI
 from langchain_core.messages import HumanMessage
 
 from chatbot import build_agent, get_conn, MySQLSaver, preload_ontologies, invalidate_ontology_cache
+from autopilot import generar_caso_aleatorio, correr_conversacion, evaluar_conversacion, get_all_polizas, MOTIVOS, PERSONALIDADES
 
 load_dotenv()
 
@@ -51,19 +53,21 @@ def _generar_sugerencias_rapidas(user_msg: str, assistant_msg: str) -> list:
         client = OpenAI()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": (
-                "Último intercambio en una conversación de retención de seguros:\n"
-                + "\n".join(lines)
-                + "\n\nBasándote SOLO en esto, genera 3-4 frases MUY cortas (máximo 5 palabras) "
-                "que representen lo que el CLIENTE podría responder ahora. "
-                "Deben sonar como el cliente hablando. "
-                "Si no hay contexto suficiente, devuelve []. "
-                "No inventes competidores ni conceptos que no aparezcan arriba. "
-                'Responde SOLO con un JSON array de strings, sin markdown. '
-                'Ejemplo: ["Me parece bien", "El precio es alto", "Me lo pienso"]'
-            )}],
+            messages=[
+                {"role": "system", "content": (
+                    "Eres un asistente en una app de retención de seguros. "
+                    "El ejecutivo de ventas escribe frases cortas para transmitir al asistente IA lo que dice el CLIENTE. "
+                    "Dado el último mensaje del asistente, genera 3-4 frases cortas (máx 6 palabras) "
+                    "que representen posibles respuestas del CLIENTE. "
+                    "Ejemplos si el asistente pregunta el motivo: 'El precio es muy alto', 'Se va a Sura', 'No lo necesita', 'Mala atención en siniestro'. "
+                    "Ejemplos si el asistente argumenta valor: 'No me convence', 'Igual está muy caro', 'Lo voy a pensar'. "
+                    "NUNCA generes preguntas. NUNCA generes frases del asistente. Solo respuestas del cliente. "
+                    "Responde SOLO con JSON array de strings."
+                )},
+                {"role": "user", "content": f"Último mensaje del asistente:\n{lines[-1] if lines else ''}"},
+            ],
             max_tokens=60,
-            temperature=0.2,
+            temperature=0.4,
         )
         raw = response.choices[0].message.content.strip()
         raw = re.sub(r"^```[a-z]*\n?", "", raw).rstrip("`").strip()
@@ -197,6 +201,8 @@ def chat():
     def generate():
         try:
             current_node = None
+            agent_response = ""
+
             for chunk, metadata in agent.stream(
                 {"messages": [HumanMessage(content=message)]},
                 config=config,
@@ -204,36 +210,53 @@ def chat():
             ):
                 node = metadata.get("langgraph_node")
 
-                # Emitir estado al entrar en un nodo nuevo
                 if node != current_node:
                     current_node = node
                     if node == "agent":
                         yield f"data: {json.dumps({'status': 'Pensando...'})}\n\n"
 
-                # Detectar tool calls para mostrar qué herramienta se va a usar
                 if node == "agent" and hasattr(chunk, "tool_calls") and chunk.tool_calls:
                     for tc in chunk.tool_calls:
                         name = tc.get("name", "")
                         if name in TOOL_STATUS:
                             yield f"data: {json.dumps({'status': TOOL_STATUS[name]})}\n\n"
 
-                # Resultado de buscar_poliza → emitir evento estructurado
                 if node == "tools":
                     content = chunk.content if hasattr(chunk, "content") else ""
-                    print(f"[tools] type={type(chunk).__name__} name={getattr(chunk, 'name', '-')} content_preview={str(content)[:80]!r}")
                     if isinstance(content, str) and "Póliza encontrada" in content:
                         poliza_data = _parse_poliza_result(content)
                         if poliza_data:
-                            print(f"[tools] emitiendo poliza: {poliza_data}")
                             yield f"data: {json.dumps({'poliza': poliza_data})}\n\n"
 
-                # Tokens de respuesta final
-                if (
-                    node == "agent"
-                    and isinstance(chunk.content, str)
-                    and chunk.content
-                ):
+                if node == "agent" and isinstance(chunk.content, str) and chunk.content:
+                    agent_response += chunk.content
                     yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+
+            # Generar sugerencias al final con la respuesta completa — prompt mínimo
+            if agent_response.strip():
+                try:
+                    oai = OpenAI()
+                    r = oai.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": (
+                                "Retención de seguros. El ejecutivo transmite al asistente lo que dice el cliente. "
+                                "Dado el mensaje del asistente, genera 3-4 frases cortas (máx 6 palabras) "
+                                "que el CLIENTE podría responder. Solo JSON array, sin markdown."
+                            )},
+                            {"role": "user", "content": agent_response[-600:]},
+                        ],
+                        max_tokens=60,
+                        temperature=0.4,
+                    )
+                    raw = r.choices[0].message.content.strip()
+                    raw = re.sub(r'^```[a-z]*\n?', '', raw).rstrip('`').strip()
+                    print(f"[suggestions] {raw}")
+                    sugerencias = json.loads(raw)
+                    if isinstance(sugerencias, list) and sugerencias:
+                        yield f"data: {json.dumps({'suggestions': sugerencias})}\n\n"
+                except Exception as ex:
+                    print(f"[suggestions error] {ex}")
 
             yield "data: [DONE]\n\n"
         except Exception as e:
@@ -393,7 +416,207 @@ def actualizar_ontologia(nombre):
     return jsonify({"ok": True})
 
 
+# ── Endpoints de Autopilot ────────────────────────────────────────────────────
+
+@app.route("/api/autopilot/opciones", methods=["GET"])
+def autopilot_opciones():
+    """Devuelve las pólizas disponibles y las listas de motivos/personalidades."""
+    return jsonify({
+        "polizas":       get_all_polizas(),
+        "motivos":       MOTIVOS,
+        "personalidades": PERSONALIDADES,
+    })
+
+
+@app.route("/api/autopilot/start", methods=["POST"])
+def autopilot_start():
+    """
+    Genera (o valida) el caso de test y crea la sesión.
+    Body (todos opcionales): { "numero_poliza": "...", "motivo": "...", "personalidad": "..." }
+    Retorna el caso completo con session_id.
+    """
+    data = request.get_json() or {}
+    numero_poliza = data.get("numero_poliza", "").strip() or None
+    motivo        = data.get("motivo", "").strip() or None
+    personalidad  = data.get("personalidad", "").strip() or None
+
+    try:
+        caso = generar_caso_aleatorio(numero_poliza)
+        if motivo:
+            caso["motivo"] = motivo
+        if personalidad:
+            caso["personalidad"] = personalidad
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    session_id = str(uuid.uuid4())
+    caso["session_id"] = session_id
+    return jsonify(caso)
+
+
+@app.route("/api/autopilot/run/<session_id>", methods=["GET"])
+def autopilot_run(session_id):
+    """
+    Corre la conversación autopilot y emite eventos SSE en tiempo real.
+    Parámetros query: numero_poliza, ramo, rentabilidad, cliente, motivo, personalidad
+    """
+    caso = {
+        "numero_poliza": request.args.get("numero_poliza", ""),
+        "ramo":          request.args.get("ramo", ""),
+        "rentabilidad":  request.args.get("rentabilidad", ""),
+        "cliente":       request.args.get("cliente", ""),
+        "motivo":        request.args.get("motivo", ""),
+        "personalidad":  request.args.get("personalidad", ""),
+    }
+
+    def generate():
+        transcripcion = []
+        decision = "indeciso"
+
+        try:
+            from langchain_core.messages import HumanMessage
+            from chatbot import build_agent, MySQLSaver, preload_ontologies
+            from autopilot import _generar_mensaje_cliente
+
+            checkpointer = MySQLSaver()
+            checkpointer.setup()
+            agent = build_agent(checkpointer)
+            preload_ontologies()
+            config = {"configurable": {"thread_id": session_id}}
+
+            historial_cliente = []
+
+            # Turno 0: ejecutivo presenta el caso al agente
+            primer_msg = (
+                f"Póliza {caso['numero_poliza']}, {caso['ramo']}. "
+                f"Cliente quiere cancelar: {caso['motivo']}."
+            )
+            transcripcion.append({"role": "ejecutivo", "content": primer_msg})
+            yield f"data: {json.dumps({'type': 'turn', 'role': 'ejecutivo', 'content': primer_msg})}\n\n"
+
+            def _stream_agent(input_msg, turno_label):
+                """Corre un turno del agente y hace yield de eventos SSE detallados."""
+                def ts(): return int(time.time() * 1000)
+
+                response = ""
+                yield f"data: {json.dumps({'type': 'trace', 'turno': turno_label, 'event': 'thinking', 'ts': ts()})}\n\n"
+                for chunk, metadata in agent.stream(
+                    {"messages": [HumanMessage(content=input_msg)]},
+                    config=config,
+                    stream_mode="messages",
+                ):
+                    node = metadata.get("langgraph_node")
+
+                    if node == "agent" and hasattr(chunk, "tool_calls") and chunk.tool_calls:
+                        for tc in chunk.tool_calls:
+                            tool_name = tc.get("name", "")
+                            tool_args = tc.get("args", {})
+                            yield f"data: {json.dumps({'type': 'tool', 'name': tool_name})}\n\n"
+                            yield f"data: {json.dumps({'type': 'trace', 'turno': turno_label, 'event': 'tool_call', 'tool': tool_name, 'args': tool_args, 'ts': ts()})}\n\n"
+
+                    if node == "tools" and hasattr(chunk, "content") and isinstance(chunk.content, str):
+                        tool_name_res = getattr(chunk, "name", "tool")
+                        preview = chunk.content[:200].replace("\n", " ")
+                        yield f"data: {json.dumps({'type': 'trace', 'turno': turno_label, 'event': 'tool_result', 'tool': tool_name_res, 'preview': preview, 'ts': ts()})}\n\n"
+                        if "Póliza encontrada" in chunk.content:
+                            poliza_data = _parse_poliza_result(chunk.content)
+                            if poliza_data:
+                                yield f"data: {json.dumps({'poliza': poliza_data})}\n\n"
+
+                    if node == "agent" and isinstance(chunk.content, str) and chunk.content:
+                        response += chunk.content
+                        yield f"data: {json.dumps({'type': 'agent_token', 'token': chunk.content})}\n\n"
+
+                if response:
+                    yield f"data: {json.dumps({'type': 'trace', 'turno': turno_label, 'event': 'agent_response', 'chars': len(response), 'ts': ts()})}\n\n"
+                    yield f"data: {json.dumps({'type': 'agent_end'})}\n\n"
+                return response
+
+            # Agente responde al primer mensaje
+            agent_response = ""
+            for event in _stream_agent(primer_msg, "T0"):
+                if event.startswith("data:"):
+                    # Extraer respuesta acumulada del generador
+                    pass
+                yield event
+
+            # Reconstruir agent_response del primer turno leyendo el estado del agente
+            state = agent.get_state(config)
+            msgs = state.values.get("messages", [])
+            last_ai = next((m for m in reversed(msgs) if hasattr(m, "content") and m.type == "ai" and isinstance(m.content, str) and m.content), None)
+            agent_response = last_ai.content if last_ai else ""
+
+            if agent_response:
+                transcripcion.append({"role": "asistente", "content": agent_response})
+                historial_cliente.append({"role": "user", "content": agent_response[:200]})
+
+            # Turnos de conversación
+            for turno in range(8):
+                # Cliente responde
+                msg_cliente = _generar_mensaje_cliente(historial_cliente, caso)
+
+                if "[DECISION: RETENER]" in msg_cliente:
+                    decision = "retenido"
+                    msg_cliente = msg_cliente.replace("[DECISION: RETENER]", "").strip()
+                elif "[DECISION: CANCELAR]" in msg_cliente:
+                    decision = "cancelado"
+                    msg_cliente = msg_cliente.replace("[DECISION: CANCELAR]", "").strip()
+
+                transcripcion.append({"role": "cliente", "content": msg_cliente})
+                yield f"data: {json.dumps({'type': 'turn', 'role': 'cliente', 'content': msg_cliente})}\n\n"
+
+                if decision in ("retenido", "cancelado"):
+                    break
+
+                # Agente responde
+                for event in _stream_agent(msg_cliente, f"T{turno+1}"):
+                    yield event
+
+                # Leer respuesta acumulada del estado
+                state = agent.get_state(config)
+                msgs = state.values.get("messages", [])
+                last_ai = next((m for m in reversed(msgs) if hasattr(m, "content") and m.type == "ai" and isinstance(m.content, str) and m.content), None)
+                agent_response = last_ai.content if last_ai else ""
+
+                if agent_response:
+                    transcripcion.append({"role": "asistente", "content": agent_response})
+                    historial_cliente.append({"role": "assistant", "content": msg_cliente})
+                    historial_cliente.append({"role": "user", "content": agent_response[:200]})
+
+                    # Detectar cierre por parte del agente (despedida)
+                    CIERRE_KEYWORDS = ["buen día", "buenas noches", "hasta luego", "que tenga", "cuídese", "no dude en contactar", "fue un placer"]
+                    if any(k in agent_response.lower() for k in CIERRE_KEYWORDS):
+                        decision = decision or "indeciso"
+                        break
+
+            # Evaluación final
+            yield f"data: {json.dumps({'type': 'evaluating'})}\n\n"
+            try:
+                evaluacion = evaluar_conversacion(transcripcion, caso, decision)
+                print(f"[evaluacion] resultado: {json.dumps(evaluacion)[:200]}")
+                evaluacion["decision"] = decision
+                yield f"data: {json.dumps({'type': 'evaluation', 'data': evaluacion})}\n\n"
+            except Exception as eval_err:
+                import traceback
+                traceback.print_exc()
+                print(f"[evaluacion ERROR] {eval_err}")
+                yield f"data: {json.dumps({'type': 'evaluation', 'data': {'error': str(eval_err), 'decision': decision, 'score_global': 0, 'analisis': 'Error al evaluar.', 'niveles': {}}})}\n\n"
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 # ── Arranque ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False, port=5001)
+    app.run(debug=True, use_reloader=False, port=5001, threaded=True)

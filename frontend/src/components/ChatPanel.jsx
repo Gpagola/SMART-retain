@@ -23,7 +23,7 @@ export default function ChatPanel({ onLoadingChange }) {
   const fileInputRef = useRef(null)
   const genRef       = useRef(0)
 
-  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza) {
+  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza, onSuggestions) {
     const res = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,6 +51,7 @@ export default function ChatPanel({ onLoadingChange }) {
           if (parsed.error) throw new Error(parsed.error)
           if (parsed.status) onStatus?.(parsed.status)
           if (parsed.poliza) onPoliza?.(parsed.poliza)
+          if (parsed.suggestions) onSuggestions?.(parsed.suggestions)
           if (parsed.token) { onStatus?.(""); onToken(parsed.token) }
         } catch (e) {
           if (e.message !== "SyntaxError") throw e
@@ -160,17 +161,7 @@ export default function ChatPanel({ onLoadingChange }) {
             return msgs
           })
         }
-      }, setAgentStatus, setPoliza)
-
-      // Pedir sugerencias en background sin bloquear el input
-      fetch(`${API}/suggestions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_msg: text, assistant_msg: accumulated }),
-      })
-        .then(r => r.json())
-        .then(s => { if (Array.isArray(s) && s.length) setSuggestions(s) })
-        .catch(() => {})
+      }, setAgentStatus, setPoliza, (s) => setSuggestions(s))
     } catch (e) {
       if (e.name !== "AbortError")
         setMessages(prev => [...prev, { role: "assistant", content: `⚠️ Error: ${e.message}` }])
