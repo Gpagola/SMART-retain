@@ -646,13 +646,12 @@ def autopilot_run(session_id):
 
         try:
             from langchain_core.messages import HumanMessage, AIMessage
-            from chatbot import build_agent, MySQLSaver, preload_ontologies
+            from langgraph.checkpoint.memory import MemorySaver
+            from chatbot import build_agent
             from autopilot import _generar_mensaje_cliente
 
-            checkpointer = MySQLSaver()
-            checkpointer.setup()
+            checkpointer = MemorySaver()
             agent = build_agent(checkpointer)
-            preload_ontologies()
             config = {"configurable": {"thread_id": session_id}}
 
             # Inyectar saludo falso para que el agente no salude de nuevo
@@ -667,8 +666,9 @@ def autopilot_run(session_id):
             # Turno 0: ejecutivo presenta el caso al agente
             primer_msg = (
                 f"Tengo al cliente {caso['cliente']} en línea, póliza {caso['numero_poliza']}, ramo {caso['ramo']}. "
-                f"Quiere cancelar porque: {caso['motivo']}. "
-                f"Busca la póliza y ayúdame a retenerlo."
+                f"Quiere darse de baja. Busca la póliza. "
+                f"A partir de ahora cada mensaje que recibas es lo que dice el cliente directamente — "
+                f"no me preguntes a mí más información, dirígete al cliente."
             )
             transcripcion.append({"role": "ejecutivo", "content": primer_msg})
             yield f"data: {json.dumps({'type': 'turn', 'role': 'ejecutivo', 'content': primer_msg})}\n\n"
@@ -729,8 +729,16 @@ def autopilot_run(session_id):
                 transcripcion.append({"role": "asistente", "content": agent_response})
                 historial_cliente.append({"role": "user", "content": agent_response[:200]})
 
+            CIERRE_KEYWORDS = ["buen día", "buenas noches", "hasta luego", "que tenga", "cuídese",
+                               "no dude en contactar", "fue un placer", "procederé a cancelar",
+                               "te deseo lo mejor", "lamento que hayamos"]
+
             # Turnos de conversación
             for turno in range(8):
+                # Si el agente ya se despidió en el turno anterior, no generar más cliente
+                if agent_response and any(k in agent_response.lower() for k in CIERRE_KEYWORDS):
+                    break
+
                 # Cliente responde
                 msg_cliente = _generar_mensaje_cliente(historial_cliente, caso)
 
@@ -762,11 +770,8 @@ def autopilot_run(session_id):
                     historial_cliente.append({"role": "assistant", "content": msg_cliente})
                     historial_cliente.append({"role": "user", "content": agent_response[:200]})
 
-                    # Detectar cierre por parte del agente (despedida)
-                    CIERRE_KEYWORDS = ["buen día", "buenas noches", "hasta luego", "que tenga", "cuídese", "no dude en contactar", "fue un placer"]
                     if any(k in agent_response.lower() for k in CIERRE_KEYWORDS):
-                        decision = decision or "indeciso"
-                        break
+                        decision = decision or "cancelado"
 
             # Evaluación final
             yield f"data: {json.dumps({'type': 'evaluating'})}\n\n"

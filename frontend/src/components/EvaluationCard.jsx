@@ -30,12 +30,12 @@ function ApplyButton({ nivel, recomendacion, status, onApply }) {
   )
 }
 
-function EvaluationCard({ evaluation, autoApply = false }) {
+function EvaluationCard({ evaluation, autoApply = false, onApplyingChange }) {
   const [expanded, setExpanded] = useState(null)
   const [applying, setApplying] = useState({})
 
   const applyRecommendation = useCallback(async (nivel, recomendacion) => {
-    setApplying(prev => ({ ...prev, [nivel]: "loading" }))
+    setApplying(prev => { const next = { ...prev, [nivel]: "loading" }; onApplyingChange?.(Object.values(next).some(v => v === "loading")); return next })
     try {
       const r = await fetch(`${API}/autopilot/apply-recommendation`, {
         method: "POST",
@@ -44,12 +44,12 @@ function EvaluationCard({ evaluation, autoApply = false }) {
       })
       const data = await r.json()
       if (!r.ok || data.error) throw new Error(data.error || "Error")
-      setApplying(prev => ({ ...prev, [nivel]: "ok" }))
+      setApplying(prev => { const next = { ...prev, [nivel]: "ok" }; onApplyingChange?.(Object.values(next).some(v => v === "loading")); return next })
       window.dispatchEvent(new CustomEvent("ontologia-updated", { detail: { nombre: data.nombre } }))
     } catch {
-      setApplying(prev => ({ ...prev, [nivel]: "error" }))
+      setApplying(prev => { const next = { ...prev, [nivel]: "error" }; onApplyingChange?.(Object.values(next).some(v => v === "loading")); return next })
     }
-  }, [])
+  }, [onApplyingChange])
 
   // Auto-aplicar todas las recomendaciones si autoApply está activo
   useEffect(() => {
@@ -136,21 +136,22 @@ export default EvaluationCard
 // ── Modal wrapper ────────────────────────────────────────────────────────────
 
 export function EvaluationModal({ evaluation, evaluating, autoApply = false, onClose }) {
+  const [applying, setApplying] = useState(false)
   // Bloquear scroll del body mientras el modal está abierto
   useEffect(() => {
     document.body.style.overflow = "hidden"
     return () => { document.body.style.overflow = "" }
   }, [])
 
-  // Cerrar con Escape
+  // Cerrar con Escape solo si ya hay resultado (no mientras evalúa)
   useEffect(() => {
-    function onKey(e) { if (e.key === "Escape") onClose() }
+    function onKey(e) { if (e.key === "Escape" && evaluation && !evaluating) onClose() }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [onClose])
+  }, [onClose, evaluation, evaluating])
 
   return (
-    <div className="ec-overlay" onClick={onClose}>
+    <div className="ec-overlay">
       <div className="ec-dialog" onClick={e => e.stopPropagation()}>
 
         <div className="ec-dialog-header">
@@ -161,16 +162,16 @@ export function EvaluationModal({ evaluation, evaluating, autoApply = false, onC
           {evaluating && !evaluation ? (
             <div className="ec-loading">
               <span className="ec-loading-dot" />
-              <span>Evaluando conversación con GPT-4o...</span>
+              <span>Evaluando las respuestas para poder optimizar...</span>
             </div>
           ) : evaluation ? (
-            <EvaluationCard evaluation={evaluation} autoApply={autoApply} />
+            <EvaluationCard evaluation={evaluation} autoApply={autoApply} onApplyingChange={setApplying} />
           ) : null}
         </div>
 
         <div className="ec-dialog-footer">
-          <button className="ec-btn-ok" onClick={onClose} disabled={evaluating && !evaluation}>
-            Aceptar
+          <button className="ec-btn-ok" onClick={onClose} disabled={(evaluating && !evaluation) || applying}>
+            {applying ? "Aplicando cambios..." : "Aceptar"}
           </button>
         </div>
 

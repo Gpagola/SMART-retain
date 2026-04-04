@@ -362,7 +362,7 @@ export default function AutopilotPanel({ onLoadingChange }) {
           {evaluating && (
             <div className="ap-status-row evaluating">
               <span className="pulse-dot" />
-              <span>Evaluando conversación con GPT-4o...</span>
+              <span>Evaluando las respuestas para poder optimizar...</span>
             </div>
           )}
 

@@ -106,12 +106,15 @@ def generar_caso_aleatorio(numero_poliza: str = None) -> dict:
 
 # ── LLM Cliente (simula al cliente / humano) ─────────────────────────────────
 
-SYSTEM_CLIENTE = """Simulas lo que un ejecutivo escribe para transmitir la respuesta del cliente. Ramo: {ramo}. Motivo: {motivo}. Personalidad: {personalidad}.
-- Responde en 3-8 palabras, directo, sin explicaciones.
+SYSTEM_CLIENTE = """Eres un cliente de seguros que quiere darse de baja. Ramo: {ramo}. Tu motivo real: {motivo}. Personalidad: {personalidad}.
+
+El ejecutivo te transmite los mensajes del asistente SR. Tú respondes como cliente.
+- Responde SIEMPRE en 3-8 palabras, como hablaría un cliente real por teléfono.
 - Ejemplos: "está muy caro", "me voy a Sura", "lo voy a pensar", "no me convence", "ok me quedo", "voy a cancelar igual".
+- Si el asistente te pregunta el motivo, díselo brevemente según tu motivo real.
 - No decidas antes del turno 4.
-- Si el agente se despide, da las gracias o da la conversación por cerrada, decidí INMEDIATAMENTE con [DECISION: RETENER] o [DECISION: CANCELAR] según cómo terminó.
-- Al decidir, terminá el mensaje con [DECISION: RETENER] o [DECISION: CANCELAR]."""
+- Si el agente se despide o cierra la conversación, decide INMEDIATAMENTE con [DECISION: RETENER] o [DECISION: CANCELAR].
+- NUNCA respondas como asistente, agente ni ejecutivo. Solo eres el cliente."""
 
 def _generar_mensaje_cliente(historial: list, caso: dict) -> str:
     """Genera la respuesta del cliente simulado dado el historial."""
@@ -292,20 +295,39 @@ TRANSCRIPCIÓN:
 
 Evalúa esta conversación de retención."""
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": SYSTEM_EVALUADOR},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=1200,
-        temperature=0.2,
-    )
-    raw = response.choices[0].message.content.strip()
+    def _llamar_evaluador(model, use_max_completion_tokens=False):
+        kwargs = dict(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_EVALUADOR},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        if use_max_completion_tokens:
+            kwargs["max_completion_tokens"] = 1200
+        else:
+            kwargs["max_tokens"] = 1200
+            kwargs["temperature"] = 0.2
+        return client.chat.completions.create(**kwargs)
+
+    # Intentar con gpt-5.4, fallback a gpt-4o si falla o devuelve vacío
+    raw = ""
+    for model, use_mct in [("gpt-5.4", True), ("gpt-4o", False)]:
+        try:
+            response = _llamar_evaluador(model, use_mct)
+            raw = (response.choices[0].message.content or "").strip()
+            print(f"[evaluador] model={model} raw_len={len(raw)} raw_preview={raw[:120]!r}")
+            if raw:
+                break
+        except Exception as e:
+            print(f"[evaluador] model={model} error: {e}")
+
+    if not raw:
+        return {"error": "No se pudo obtener evaluación", "raw": ""}
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Intentar extraer JSON de la respuesta
         import re
         m = re.search(r'\{.*\}', raw, re.DOTALL)
         if m:
