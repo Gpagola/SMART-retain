@@ -24,13 +24,14 @@ function MoonIcon() {
   )
 }
 
-export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase, theme, onToggleTheme, loading, autopilotMode, onToggleAutopilot }) {
+export default function Header({ appMode, onToggleMode, onNewCase, theme, onToggleTheme, loading, adminWidth }) {
   const isDark = theme === "dark"
+  const isOntologist = appMode === "ontologist"
 
   return (
     <>
     <header className="header">
-      <div className="header-left" style={adminOpen ? { width: adminWidth } : {}}>
+      <div className="header-left" style={isOntologist && adminWidth ? { width: adminWidth } : {}}>
         <img
           src={`${import.meta.env.BASE_URL}logos/logo.jpg`}
           alt="Logo"
@@ -41,24 +42,6 @@ export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase
         <span className="header-title">Smart Retain</span>
       </div>
       <div className="header-right">
-        {/* Toggle Manual / Autopilot */}
-        <div className="mode-toggle">
-          <button
-            className={`mode-btn ${!autopilotMode ? "active" : ""}`}
-            onClick={() => autopilotMode && onToggleAutopilot()}
-            title="Modo manual"
-          >
-            Manual
-          </button>
-          <button
-            className={`mode-btn ${autopilotMode ? "active autopilot" : ""}`}
-            onClick={() => !autopilotMode && onToggleAutopilot()}
-            title="Modo autopilot"
-          >
-            ⚡ Autopilot
-          </button>
-        </div>
-
         <button className="new-case-btn" onClick={onNewCase} title="Nuevo caso">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -66,18 +49,23 @@ export default function Header({ adminOpen, adminWidth, onToggleAdmin, onNewCase
           </svg>
           <span>Nuevo caso</span>
         </button>
-        <button
-          className={`admin-toggle ${adminOpen ? "active" : ""}`}
-          onClick={onToggleAdmin}
-          title={adminOpen ? "Ocultar estrategia" : "Mostrar estrategia"}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v0A2.5 2.5 0 0 1 14.5 2H15a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5h-1.5"/>
-            <path d="M14.5 22A2.5 2.5 0 0 1 12 19.5v0A2.5 2.5 0 0 1 9.5 22H9a5 5 0 0 1-5-5v-1a5 5 0 0 1 5-5h1.5"/>
-            <path d="M12 4.5v15"/>
-          </svg>
-          <span>Estrategia</span>
-        </button>
+
+        {isOntologist ? (
+          <button className="mode-switch-btn user-mode" onClick={onToggleMode} title="Ver como usuario">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span>Modo Usuario</span>
+          </button>
+        ) : (
+          <button className="mode-switch-btn onto-mode" onClick={onToggleMode} title="Volver al panel de ontologista">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            <span>Ontologista</span>
+          </button>
+        )}
 
         {/* Switch luna/sol */}
         <button

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import { EvaluationModal } from "./EvaluationCard"
+import RadarChart from "./RadarChart"
 import "./ChatPanel.css"
 
 const API = import.meta.env.VITE_API_URL || "/api"
@@ -8,7 +9,7 @@ const API = import.meta.env.VITE_API_URL || "/api"
 const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.webp"
 
 
-export default function ChatPanel({ onLoadingChange, onNewCase }) {
+export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false }) {
   const [sessionId, setSessionId]   = useState(null)
   const [messages, setMessages]     = useState([])
   const [input, setInput]           = useState("")
@@ -21,6 +22,8 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
   const [evaluating, setEvaluating]     = useState(false)
   const [evaluation, setEvaluation]     = useState(null)
   const [ended, setEnded]               = useState(false)
+  const [showOptPrompt, setShowOptPrompt] = useState(false)
+  const [riskProfile, setRiskProfile]     = useState(null)
   const bottomRef    = useRef(null)
   const textareaRef  = useRef(null)
   const abortRef     = useRef(null)
@@ -29,7 +32,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
   const messagesRef  = useRef([])
   const polizaRef    = useRef(null)
 
-  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza, onSuggestions, onCierre) {
+  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza, onSuggestions, onCierre, onRiskProfile) {
     const res = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,6 +61,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
           if (parsed.status) onStatus?.(parsed.status)
           if (parsed.poliza) onPoliza?.(parsed.poliza)
           if (parsed.suggestions) onSuggestions?.(parsed.suggestions)
+          if (parsed.risk_profile) onRiskProfile?.(parsed.risk_profile)
           if (parsed.cierre) onCierre?.()
           if (parsed.token) { onStatus?.(""); onToken(parsed.token) }
         } catch (e) {
@@ -86,10 +90,20 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
     }
   }
 
-  function handleEvaluar() {
-    abortRef.current?.abort()         // corta cualquier stream en curso
+  function handleFin() {
+    abortRef.current?.abort()
     setEnded(true)
+    setShowOptPrompt(true)
+  }
+
+  function handleOptimize() {
+    setShowOptPrompt(false)
     evaluateChat(messagesRef.current, polizaRef.current)
+  }
+
+  function handleSkipOptimize() {
+    setShowOptPrompt(false)
+    onNewCase?.()
   }
 
   function handleModalClose() {
@@ -101,32 +115,10 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
       const r = await fetch(`${API}/session/new`, { method: "POST" })
       const { session_id } = await r.json()
       setSessionId(session_id)
-
-      setLoading(true); onLoadingChange?.(true)
-      const controller = new AbortController()
-      abortRef.current = controller
-      try {
-        let accumulated = ""
-        let started = false
-        await streamChat("Hola", session_id, controller, (token) => {
-          accumulated += token
-          if (!started) {
-            started = true
-            setIsStreaming(true)
-            setMessages([{ role: "assistant", content: accumulated }])
-          } else {
-            setMessages([{ role: "assistant", content: accumulated }])
-          }
-        }, setAgentStatus, setPoliza)
-      } catch (e) {
-        if (e.name !== "AbortError")
-          setMessages([{ role: "assistant", content: `⚠️ Error al iniciar: ${e.message}` }])
-      } finally {
-        setLoading(false); onLoadingChange?.(false)
-        setIsStreaming(false)
-        setAgentStatus("")
-        abortRef.current = null
-      }
+      setMessages([{
+        role: "assistant",
+        content: "¡Hola! Soy el asistente de retención. Indícame el número de póliza del cliente para comenzar."
+      }])
     }
     init()
   }, [])
@@ -206,11 +198,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
             return msgs
           })
         }
-      }, setAgentStatus, setPoliza, (s) => setSuggestions(s),
-      () => {
-        // Auto-evaluación al detectar cierre — 100ms para que el estado de mensajes se actualice
-        setTimeout(() => { setEnded(true); evaluateChat(messagesRef.current, polizaRef.current) }, 100)
-      })
+      }, setAgentStatus, setPoliza, (s) => setSuggestions(s), undefined, setRiskProfile)
     } catch (e) {
       if (e.name !== "AbortError")
         setMessages(prev => [...prev, { role: "assistant", content: `⚠️ Error: ${e.message}` }])
@@ -255,21 +243,23 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
 
   return (
     <div className="chat-panel">
+      <div className="chat-main">
 
-      {/* Barra de contexto — aparece solo cuando hay póliza cargada */}
-      {poliza && (
-        <div className="session-bar">
-          <span className="session-item">
-            <span className="session-label">Póliza</span>
-            <span className="session-value">{poliza.numero}</span>
-          </span>
-          {poliza.cliente && (<>
-            <span className="session-sep">·</span>
+      <div className="messages">
+        {/* Barra de contexto — aparece solo cuando hay póliza cargada */}
+        {poliza && (
+          <div className="session-bar">
             <span className="session-item">
-              <span className="session-label">Cliente</span>
-              <span className="session-value">{poliza.cliente}</span>
+              <span className="session-label">Póliza</span>
+              <span className="session-value">{poliza.numero}</span>
             </span>
-          </>)}
+            {poliza.cliente && (<>
+              <span className="session-sep">·</span>
+              <span className="session-item">
+                <span className="session-label">Cliente</span>
+                <span className="session-value">{poliza.cliente}</span>
+              </span>
+            </>)}
           <span className="session-sep">·</span>
           <span className="session-item">
             <span className="session-label">Ramo</span>
@@ -313,7 +303,6 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
         </div>
       )}
 
-      <div className="messages">
         {messages.map((msg, i) => (
           <div key={i} className={`message-row ${msg.role}`}>
             {msg.role === "assistant" && <div className="avatar">SR</div>}
@@ -337,8 +326,8 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Modal de evaluación ── */}
-      {(evaluating || evaluation) && (
+      {/* ── Modal de evaluación (solo en modo ontologista) ── */}
+      {showEval && (evaluating || evaluation) && (
         <EvaluationModal
           evaluation={evaluation}
           evaluating={evaluating}
@@ -424,17 +413,41 @@ export default function ChatPanel({ onLoadingChange, onNewCase }) {
               </button>
             ))}
           </div>
-          <button
-            className="eval-btn"
-            title="Evaluar conversación"
-            disabled={messages.length < 2 || loading || evaluating || ended}
-            onClick={handleEvaluar}
-          >
-            {evaluating ? "Evaluando..." : "Evaluar"}
-          </button>
+          {showEval && (
+            <button
+              className="eval-btn"
+              title="Finalizar conversación"
+              disabled={messages.length < 2 || loading || evaluating || ended}
+              onClick={handleFin}
+            >
+              Fin
+            </button>
+          )}
         </div>
         <p className="disclaimer">Desarrollado por Braintrust CS firma miembro de Andersen Consulting</p>
       </div>
+
+      </div>{/* close chat-main */}
+
+      {/* ── Radar de riesgo ── */}
+      <div className="chat-radar-sidebar">
+        <RadarChart data={riskProfile} />
+      </div>
+
+      {/* ── Prompt optimizador ── */}
+      {showOptPrompt && (
+        <div className="ap-opt-overlay">
+          <div className="ap-opt-dialog">
+            <div className="ap-opt-icon">&#9881;</div>
+            <h3>Conversación finalizada</h3>
+            <p>¿Deseas ejecutar el agente optimizador para analizar la conversación y sugerir mejoras a la ontología?</p>
+            <div className="ap-opt-actions">
+              <button className="ap-opt-yes" onClick={handleOptimize}>Sí, optimizar</button>
+              <button className="ap-opt-no" onClick={handleSkipOptimize}>No, nuevo caso</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

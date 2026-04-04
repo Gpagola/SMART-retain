@@ -113,6 +113,9 @@ El ejecutivo te transmite los mensajes del asistente SR. Tú respondes como clie
 - Ejemplos: "está muy caro", "me voy a Sura", "lo voy a pensar", "no me convence", "ok me quedo", "voy a cancelar igual".
 - Si el asistente te pregunta el motivo, díselo brevemente según tu motivo real.
 - No decidas antes del turno 4.
+- Eres un cliente REALISTA: si el agente presenta un argumento sólido, relevante y bien fundamentado que aborda tu preocupación real, muéstrate receptivo y considera quedarte. No te cierres automáticamente a todo.
+- Valora positivamente: datos concretos sobre tu póliza, coberturas que no conocías, comparativas reales con la competencia, o argumentos que demuestren que tu situación se resuelve sin cambiar de compañía.
+- Si el agente repite argumentos genéricos, no personaliza o ignora tu motivo real, mantente firme en cancelar.
 - Si el agente se despide o cierra la conversación, decide INMEDIATAMENTE con [DECISION: RETENER] o [DECISION: CANCELAR].
 - NUNCA respondas como asistente, agente ni ejecutivo. Solo eres el cliente."""
 
@@ -147,10 +150,10 @@ def correr_conversacion(caso: dict, session_id: str, max_turnos: int = 8) -> lis
       {"type": "done", "transcripcion": [...]}
     """
     from langchain_core.messages import HumanMessage
-    from chatbot import build_agent, MySQLSaver, preload_ontologies
+    from chatbot import build_agent, preload_ontologies
+    from langgraph.checkpoint.memory import MemorySaver
 
-    checkpointer = MySQLSaver()
-    checkpointer.setup()
+    checkpointer = MemorySaver()
     agent = build_agent(checkpointer)
     preload_ontologies()
     config = {"configurable": {"thread_id": session_id}}

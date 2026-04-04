@@ -1,47 +1,85 @@
+@font-face {
+  font-family: "Alliance No.2";
+  src: url("./fonts/Alliance No.2 Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alliance No.2";
+  src: url("./fonts/Alliance No.2 Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alliance No.2";
+  src: url("./fonts/Alliance No.2 Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alliance No.2";
+  src: url("./fonts/Alliance No.2 Black.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Tema oscuro (default) ── */
 :root {
-  --bg-app:      #212121;
-  --bg-panel:    #171717;
-  --bg-input:    #2f2f2f;
-  --bg-hover:    #2a2a2a;
-  --bg-active:   #2f2f2f;
-  --bg-textarea: #1a1a1a;
-  --border:      #2f2f2f;
-  --border-focus:#565656;
-  --text:        #ececec;
-  --text-muted:  #9b9b9b;
-  --text-faint:  #6b6b6b;
-  --btn-bg:      #ececec;
-  --btn-text:    #212121;
-  --avatar-bg:   #1a4f9c;
-  --send-bg:     #1a4f9c;
-  --send-text:   #ffffff;
+  --bg-app:      #101010;
+  --bg-panel:    #161616;
+  --bg-input:    #1e1e1e;
+  --bg-hover:    #252525;
+  --bg-active:   #2a2a2a;
+  --bg-textarea: #121212;
+  --bg-chat:     #101010;
+  --border:      #2a2a2a;
+  --border-focus:#444;
+  --text:        #f0f0f0;
+  --text-muted:  #888;
+  --text-faint:  #555;
+  --btn-bg:      #f0f0f0;
+  --btn-text:    #101010;
+  --avatar-bg:   #f0f0f0;
+  --avatar-text: #101010;
+  --send-bg:     #f0f0f0;
+  --send-text:   #101010;
+  --accent:      #f0f0f0;
 }
 
 /* ── Tema claro ── */
 [data-theme="light"] {
-  --bg-app:      #f5f5f5;
-  --bg-panel:    #ffffff;
-  --bg-input:    #ececec;
-  --bg-hover:    #e8e8e8;
-  --bg-active:   #e0e0e0;
-  --bg-textarea: #f9f9f9;
-  --border:      #d9d9d9;
-  --border-focus:#ababab;
+  --bg-app:      #ffffff;
+  --bg-panel:    #fafafa;
+  --bg-input:    #f0f0f0;
+  --bg-hover:    #eaeaea;
+  --bg-active:   #e4e4e4;
+  --bg-textarea: #ffffff;
+  --bg-chat:     #ffffff;
+  --border:      #e0e0e0;
+  --border-focus:#bbb;
   --text:        #1a1a1a;
-  --text-muted:  #555555;
-  --text-faint:  #888888;
+  --text-muted:  #777;
+  --text-faint:  #aaa;
   --btn-bg:      #1a1a1a;
   --btn-text:    #ffffff;
-  --avatar-bg:   #1a4f9c;
-  --send-bg:     #1a4f9c;
+  --avatar-bg:   #1a1a1a;
+  --avatar-text: #ffffff;
+  --send-bg:     #1a1a1a;
   --send-text:   #ffffff;
+  --accent:      #1a1a1a;
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Alliance No.2", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg-app);
   color: var(--text);
   height: 100vh;

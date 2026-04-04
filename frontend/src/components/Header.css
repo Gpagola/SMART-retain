@@ -3,28 +3,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  height: 76px;
-  background: #fff;
-  border-bottom: none;
+  height: 56px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-}
-
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 .header-bar {
-  height: 8px;
+  height: 2px;
   flex-shrink: 0;
-  background: linear-gradient(90deg, #c850c0, #4158d0, #0093e9, #f97316, #3a1c71, #c850c0);
-  background-size: 400% 100%;
-  background-position: 0% 0%;
+  background: var(--border);
 }
 
 .header-bar.animating {
-  animation: gradientShift 20s ease infinite;
+  background: var(--text);
+  animation: none;
 }
 
 .header-left {
@@ -32,27 +25,28 @@
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  min-width: 380px;
+  min-width: 200px;
 }
 
 .header-logo {
-  height: 52px;
+  height: 32px;
   width: auto;
   object-fit: contain;
 }
 
 .header-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #000;
-  letter-spacing: -0.3px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  font-family: 'Inter', sans-serif;
+  font-family: "Alliance No.2", sans-serif;
+  text-transform: uppercase;
 }
 
 .header-divider {
   width: 1px;
-  height: 28px;
+  height: 24px;
   background: var(--border);
 }
 
@@ -66,68 +60,82 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid #1a4f9c;
-  background: #1a4f9c;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 0;
+  border: 1px solid var(--text);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: background 0.15s, color 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.new-case-btn:hover { opacity: 0.85; }
+.new-case-btn:hover { background: var(--text); color: var(--bg-panel); }
 
-.admin-toggle {
+/* ── Mode switch button ── */
+.mode-switch-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: #f0f0f0;
-  color: #444;
-  font-size: 13px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: all 0.15s;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  box-shadow: none;
 }
 
-.admin-toggle:hover { background: #e2e2e2; }
-.admin-toggle.active { background: #f0f0f0; color: #444; border-color: #ddd; }
+.mode-switch-btn.user-mode {
+  border: 1px solid var(--text);
+  background: var(--text);
+  color: var(--bg-panel);
+}
+.mode-switch-btn.user-mode:hover { opacity: 0.85; }
+
+.mode-switch-btn.onto-mode {
+  border: 1px solid var(--border-focus);
+  background: transparent;
+  color: var(--text-muted);
+}
+.mode-switch-btn.onto-mode:hover { border-color: var(--text); color: var(--text); }
 
 /* ── Theme switch ── */
 .theme-switch {
   position: relative;
-  width: 68px;
-  height: 34px;
+  width: 56px;
+  height: 28px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-input);
   cursor: pointer;
   transition: background 0.3s, border-color 0.3s;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: none;
 }
 
 .switch-knob {
   position: absolute;
   top: 3px;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--btn-bg);
+  background: var(--text);
   transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  box-shadow: none;
   z-index: 2;
 }
 
 .theme-switch.dark  .switch-knob { left: 3px; }
-.theme-switch.light .switch-knob { left: 37px; }
+.theme-switch.light .switch-knob { left: 31px; }
 
 .switch-moon,
 .switch-sun {
@@ -142,53 +150,7 @@
   pointer-events: none;
 }
 
-.switch-moon { left: 6px; }
-.switch-sun  { right: 6px; }
+.switch-moon { left: 5px; }
+.switch-sun  { right: 5px; }
 
 .theme-switch:hover { border-color: var(--border-focus); }
-
-/* ── Mode toggle (Manual / Autopilot) ── */
-.mode-toggle {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-.mode-btn {
-  height: 34px;
-  padding: 0 14px;
-  border: none;
-  background: var(--bg-input);
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.mode-btn:hover { background: var(--border); color: var(--text); }
-
-.mode-btn.active {
-  background: #e8eef8;
-  color: #1a4f9c;
-  font-weight: 700;
-}
-
-.mode-btn.active.autopilot {
-  background: linear-gradient(135deg, #4158d0, #c850c0);
-  color: #fff;
-}
-
-[data-theme="dark"] .mode-btn.active {
-  background: #1e3a6e;
-  color: #90b8f8;
-}
-
-[data-theme="dark"] .mode-btn.active.autopilot {
-  background: linear-gradient(135deg, #4158d0, #c850c0);
-  color: #fff;
-}

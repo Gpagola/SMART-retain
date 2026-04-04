@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import { EvaluationModal } from "./EvaluationCard"
+import RadarChart from "./RadarChart"
 import "./AutopilotPanel.css"
 
 const API = import.meta.env.VITE_API_URL || "/api"
@@ -35,7 +36,10 @@ export default function AutopilotPanel({ onLoadingChange }) {
   const [evaluating, setEvaluating] = useState(false)
   const [evaluation, setEvaluation] = useState(null)
   const [traceEvents, setTrace]     = useState([])     // eventos internos del agente
-  const [autoEvolve, setAutoEvolve] = useState(false)
+  const [showOptPrompt, setShowOptPrompt] = useState(false)
+  const [riskProfile, setRiskProfile]     = useState(null)
+  const convDataRef = useRef(null)   // transcripcion + decision del autopilot
+
 
   const abortRef   = useRef(null)
   const bottomRef  = useRef(null)
@@ -74,6 +78,7 @@ export default function AutopilotPanel({ onLoadingChange }) {
     setEvaluating(false)
     setCaso(null)
     setTrace([])
+    setRiskProfile(null)
 
     const body = mode === "random" ? {} : {
       numero_poliza: poliza || undefined,
@@ -188,14 +193,16 @@ export default function AutopilotPanel({ onLoadingChange }) {
               setToolStatus("")
               break
 
-            case "evaluating":
-              setEvaluating(true)
+            case "risk_profile":
+              setRiskProfile(ev.data)
               break
 
-            case "evaluation":
-              setEvaluating(false)
-              console.log("[evaluation]", JSON.stringify(ev.data))
-              setEvaluation(ev.data)
+            case "done_conversation":
+              convDataRef.current = {
+                transcripcion: ev.transcripcion,
+                decision: ev.decision,
+              }
+              setShowOptPrompt(true)
               break
 
             case "trace":
@@ -226,6 +233,43 @@ export default function AutopilotPanel({ onLoadingChange }) {
 
   function handleStop() {
     abortRef.current?.abort()
+  }
+
+  async function handleOptimize() {
+    setShowOptPrompt(false)
+    const data = convDataRef.current
+    if (!data || !caso) return
+    setEvaluating(true)
+    try {
+      const r = await fetch(`${API}/autopilot/evaluate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcripcion: data.transcripcion,
+          caso,
+          decision: data.decision,
+        }),
+      })
+      const ev = await r.json()
+      if (ev.error) throw new Error(ev.error)
+      setEvaluation(ev)
+    } catch (e) {
+      console.error("[autopilot evaluate]", e)
+      setEvaluation({ error: e.message, score_global: 0, analisis: "Error al evaluar.", niveles: {} })
+    } finally {
+      setEvaluating(false)
+    }
+  }
+
+  function handleSkipOptimize() {
+    setShowOptPrompt(false)
+    convDataRef.current = null
+    // Reset todo para nuevo caso
+    setCaso(null)
+    setTurns([])
+    setAgentBuf("")
+    setEvaluation(null)
+    setTrace([])
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -276,18 +320,6 @@ export default function AutopilotPanel({ onLoadingChange }) {
               Detener
             </button>
           )}
-          <label className="ap-evolve-toggle" title="Aplica automáticamente todas las mejoras sugeridas al finalizar">
-            <span className="ap-evolve-track">
-              <input
-                type="checkbox"
-                checked={autoEvolve}
-                onChange={e => setAutoEvolve(e.target.checked)}
-                disabled={running}
-              />
-              <span className="ap-evolve-thumb" />
-            </span>
-            <span className="ap-evolve-label">Agente de evolución</span>
-          </label>
         </div>
       </div>
 
@@ -312,6 +344,7 @@ export default function AutopilotPanel({ onLoadingChange }) {
 
       {/* ── Transcripción ── */}
         <div className="ap-transcript">
+          <div className="ap-transcript-inner">
           {turns.map((t, i) => (
             <div key={i} className={`ap-turn ap-turn-${t.role}`}>
               {t.role === "ejecutivo" && (
@@ -367,10 +400,14 @@ export default function AutopilotPanel({ onLoadingChange }) {
           )}
 
           <div ref={bottomRef} />
+          </div>
         </div>
 
-        {/* ── Panel de Trace (columna derecha fija) ── */}
+        {/* ── Panel derecho: Radar + Trace ── */}
         <div className="ap-trace" ref={traceRef}>
+          <div className="ap-trace-radar">
+            <RadarChart data={riskProfile} />
+          </div>
           <div className="ap-trace-title">Traza del agente SR</div>
           <div className="ap-trace-legend">
             <span><span className="ap-trace-dot dot-think" />Razonando</span>
@@ -417,13 +454,35 @@ export default function AutopilotPanel({ onLoadingChange }) {
       </div>
       )}
 
+      {/* ── Prompt optimizador ── */}
+      {showOptPrompt && (
+        <div className="ap-opt-overlay">
+          <div className="ap-opt-dialog">
+            <div className="ap-opt-icon">&#9881;</div>
+            <h3>Conversación finalizada</h3>
+            <p>¿Deseas ejecutar el agente optimizador para analizar la conversación y sugerir mejoras a la ontología?</p>
+            <div className="ap-opt-actions">
+              <button className="ap-opt-yes" onClick={handleOptimize}>Sí, optimizar</button>
+              <button className="ap-opt-no" onClick={handleSkipOptimize}>No, nuevo caso</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Modal de evaluación ── */}
       {(evaluating || evaluation) && (
         <EvaluationModal
           evaluation={evaluation}
           evaluating={evaluating}
-          autoApply={autoEvolve}
-          onClose={() => { setEvaluation(null); setEvaluating(false) }}
+          onClose={() => {
+            setEvaluation(null)
+            setEvaluating(false)
+            convDataRef.current = null
+            setCaso(null)
+            setTurns([])
+            setAgentBuf("")
+            setTrace([])
+          }}
         />
       )}
 

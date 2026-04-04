@@ -4,9 +4,25 @@ import "./AdminPanel.css"
 const API = import.meta.env.VITE_API_URL || "/api"
 
 const LABELS = {
-  "system-prompt":             "System Prompt",
-  "ontologia-reglas":          "Reglas de Retención",
+  "system-prompt":             "Prompt",
+  "ontologia-reglas":          "Reglas",
   "ontologia-diferenciadores": "Diferenciadores",
+  "autopilot-cliente":         "Cliente",
+  "autopilot-evaluador":       "Evaluador",
+}
+
+const TAB_ORDER = [
+  "system-prompt", "ontologia-reglas", "ontologia-diferenciadores",
+  "_sep_",
+  "autopilot-cliente", "autopilot-evaluador",
+]
+
+const TAB_COLORS = {
+  "system-prompt":             "tab-system",
+  "ontologia-reglas":          "tab-reglas",
+  "ontologia-diferenciadores": "tab-diferenciadores",
+  "autopilot-cliente":         "tab-autopilot",
+  "autopilot-evaluador":       "tab-autopilot",
 }
 
 function findMatches(text, query) {
@@ -51,10 +67,27 @@ export default function AdminPanel({ onSaved, width }) {
   const [searchOpen, setSearchOpen]   = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [matchIndex, setMatchIndex]   = useState(0)
+  const [expanded, setExpanded]       = useState(false)
 
   const textareaRef = useRef(null)
   const hlRef       = useRef(null)
   const searchRef   = useRef(null)
+
+  const orderOf = (name) => {
+    const i = TAB_ORDER.indexOf(name)
+    return i >= 0 ? i : 99
+  }
+  const sorted = [...ontologias].sort((a, b) => orderOf(a.nombre) - orderOf(b.nombre))
+
+  // Build render list with separator
+  const sepIndex = TAB_ORDER.indexOf("_sep_")
+  const tabItems = []
+  sorted.forEach((o) => {
+    if (tabItems.length > 0 && orderOf(o.nombre) > sepIndex && orderOf(tabItems[tabItems.length - 1]?.nombre) < sepIndex) {
+      tabItems.push({ _sep: true })
+    }
+    tabItems.push(o)
+  })
 
   const matches = findMatches(contenido, searchQuery)
 
@@ -135,8 +168,11 @@ export default function AdminPanel({ onSaved, width }) {
       .then(data => {
         setOntologias(data)
         if (!keepSelected && data.length) {
-          setSelected(data[0].nombre)
-          setContenido(data[0].contenido)
+          const first = [...data].sort(
+            (a, b) => (TAB_ORDER.indexOf(a.nombre) ?? 99) - (TAB_ORDER.indexOf(b.nombre) ?? 99)
+          )[0]
+          setSelected(first.nombre)
+          setContenido(first.contenido)
           setDirty(false)
         } else if (keepSelected) {
           // Actualizar contenido del tab activo con la versión más reciente
@@ -195,16 +231,39 @@ export default function AdminPanel({ onSaved, width }) {
 
   return (
     <aside className="admin-panel" style={width ? { width, minWidth: width, maxWidth: width } : {}}>
+      <div className="admin-sidebar-label">
+        <span className="sidebar-title">Ontología: Retención</span>
+      </div>
+      <div className="admin-main">
       <div className="admin-tabs">
-        {ontologias.map(o => (
-          <button
-            key={o.nombre}
-            className={`admin-tab ${selected === o.nombre ? "active" : ""}`}
-            onClick={() => handleSelect(o.nombre)}
-          >
-            {LABELS[o.nombre] || o.nombre}
-          </button>
-        ))}
+        <div className="admin-tab-col">
+          <span className="admin-tab-label">Ontología</span>
+          <div className="admin-tab-group">
+            {sorted.filter(o => !o.nombre.startsWith("autopilot-")).map(o => (
+              <button
+                key={o.nombre}
+                className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
+                onClick={() => handleSelect(o.nombre)}
+              >
+                {LABELS[o.nombre] || o.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="admin-tab-col">
+          <span className="admin-tab-label">Autopilot</span>
+          <div className="admin-tab-group">
+            {sorted.filter(o => o.nombre.startsWith("autopilot-")).map(o => (
+              <button
+                key={o.nombre}
+                className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
+                onClick={() => handleSelect(o.nombre)}
+              >
+                {LABELS[o.nombre] || o.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="admin-editor">
@@ -267,6 +326,125 @@ export default function AdminPanel({ onSaved, width }) {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         </button>
+        <button
+          className="expand-toggle"
+          onClick={() => setExpanded(true)}
+          title="Ampliar editor"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Modal expandido ── */}
+      {expanded && (
+        <div className="admin-expand-overlay">
+          <div className="admin-expand-modal">
+            <div className="admin-expand-body">
+              <div className="admin-expand-main">
+                <div className="admin-expand-header">
+                  <div className="admin-tabs expanded">
+                    <div className="admin-tab-col">
+                      <span className="admin-tab-label">Ontología</span>
+                      <div className="admin-tab-group">
+                        {sorted.filter(o => !o.nombre.startsWith("autopilot-")).map(o => (
+                          <button
+                            key={o.nombre}
+                            className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
+                            onClick={() => handleSelect(o.nombre)}
+                          >
+                            {LABELS[o.nombre] || o.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="admin-tab-col">
+                      <span className="admin-tab-label">Autopilot</span>
+                      <div className="admin-tab-group">
+                        {sorted.filter(o => o.nombre.startsWith("autopilot-")).map(o => (
+                          <button
+                            key={o.nombre}
+                            className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
+                            onClick={() => handleSelect(o.nombre)}
+                          >
+                            {LABELS[o.nombre] || o.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <button className="expand-close" onClick={() => setExpanded(false)} title="Cerrar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div className="admin-expand-editor">
+                  <div className="editor-wrap">
+                    <div
+                      ref={hlRef}
+                      className="highlight-layer"
+                      dangerouslySetInnerHTML={{ __html: buildHighlightHtml(contenido, searchQuery, matchIndex, matches) }}
+                    />
+                    <textarea
+                      ref={textareaRef}
+                      className={`admin-textarea ${searchOpen ? "search-active" : ""}`}
+                      value={contenido}
+                      onChange={handleChange}
+                      spellCheck={false}
+                    />
+                  </div>
+                </div>
+                {searchOpen && (
+                  <div className="search-bar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input
+                      ref={searchRef}
+                      className="search-input"
+                      placeholder="Buscar..."
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      onKeyDown={handleSearchKey}
+                    />
+                    {searchQuery && (
+                      <span className="search-count">
+                        {matches.length ? `${matchIndex + 1}/${matches.length}` : "0 resultados"}
+                      </span>
+                    )}
+                    <button className="search-nav" onClick={() => navigate(-1)} disabled={!matches.length} title="Anterior">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button className="search-nav" onClick={() => navigate(1)} disabled={!matches.length} title="Siguiente">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                  </div>
+                )}
+                <div className="admin-expand-footer">
+                  <button className="save-btn" onClick={handleSave} disabled={saving || !dirty}>
+                    {saving ? "Guardando..." : "Guardar"}
+                  </button>
+                  {dirty && <span className="unsaved">Sin guardar</span>}
+                  <button
+                    className={`search-toggle ${searchOpen ? "active" : ""}`}
+                    onClick={toggleSearch}
+                    title="Buscar en el contenido"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="admin-expand-sidebar">
+                <span className="sidebar-title">Ontología: Retención</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </aside>
   )

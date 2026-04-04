@@ -17,7 +17,7 @@ import pypdf
 from openai import OpenAI
 from langchain_core.messages import HumanMessage
 
-from chatbot import build_agent, get_conn, MySQLSaver, preload_ontologies, invalidate_ontology_cache
+from chatbot import build_agent, get_conn, preload_ontologies, invalidate_ontology_cache
 from autopilot import generar_caso_aleatorio, correr_conversacion, evaluar_conversacion, get_all_polizas, MOTIVOS, PERSONALIDADES
 
 load_dotenv()
@@ -27,20 +27,56 @@ CORS(app)  # permite peticiones desde React (localhost:5173)
 
 # ── Estado global del agente ──────────────────────────────────────────────────
 
+from langgraph.checkpoint.memory import MemorySaver as _MemorySaver
+
 _checkpointer = None
 _agent = None
 
 def get_agent():
     global _checkpointer, _agent
     if _agent is None:
-        _checkpointer = MySQLSaver()
-        _checkpointer.setup()
+        _checkpointer = _MemorySaver()
         _agent = build_agent(_checkpointer)
         preload_ontologies()
     return _agent
 
 
 # ── Generador de sugerencias rápidas ─────────────────────────────────────────
+
+def _analyze_risk_profile(conversation_text: str) -> dict | None:
+    """Analiza la conversación y devuelve scores 0-100 para 6 dimensiones de riesgo de baja."""
+    try:
+        client = OpenAI()
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": (
+                    "Analiza esta conversación de retención de seguros y puntúa de 0 a 100 "
+                    "el nivel de riesgo detectado en cada dimensión. 0=no detectado, 100=riesgo máximo.\n"
+                    "Dimensiones:\n"
+                    "1. precio: percepción de sobrecoste, subida de prima, 'pago mucho para lo que recibo'\n"
+                    "2. competencia: ofertas de competidores, comparativas, 'me dan más por menos'\n"
+                    "3. experiencia: mala experiencia con siniestros o atención al cliente\n"
+                    "4. valor: falta de valor percibido, 'nunca lo uso', 'no me aporta'\n"
+                    "5. situacion: cambios personales (mudanza, venta de coche, cambios familiares)\n"
+                    "6. vinculacion: relación débil con la compañía, cliente monoproducto\n\n"
+                    "Responde SOLO JSON: {\"precio\":N,\"competencia\":N,\"experiencia\":N,\"valor\":N,\"situacion\":N,\"vinculacion\":N}"
+                )},
+                {"role": "user", "content": conversation_text[-2000:]},
+            ],
+            max_tokens=80,
+            temperature=0.1,
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```[a-z]*\n?', '', raw).rstrip('`').strip()
+        result = json.loads(raw)
+        for key in ["precio", "competencia", "experiencia", "valor", "situacion", "vinculacion"]:
+            result[key] = max(0, min(100, int(result.get(key, 0))))
+        return result
+    except Exception as e:
+        print(f"[risk_profile] error: {e}")
+        return None
+
 
 def _generar_sugerencias_rapidas(user_msg: str, assistant_msg: str) -> list:
     """Genera sugerencias rápidas a partir del último intercambio, sin acceder a la BD."""
@@ -231,6 +267,22 @@ def chat():
                 if node == "agent" and isinstance(chunk.content, str) and chunk.content:
                     agent_response += chunk.content
                     yield f"data: {json.dumps({'token': chunk.content})}\n\n"
+
+            # Risk profile analysis
+            if agent_response.strip():
+                try:
+                    state = get_agent().get_state(config)
+                    conv_msgs = state.values.get("messages", [])
+                    conv_text = "\n".join(
+                        f"{'Cliente' if m.type == 'human' else 'Agente'}: {m.content[:300]}"
+                        for m in conv_msgs
+                        if hasattr(m, "content") and isinstance(m.content, str) and m.content.strip()
+                    )
+                    risk = _analyze_risk_profile(conv_text)
+                    if risk:
+                        yield f"data: {json.dumps({'risk_profile': risk})}\n\n"
+                except Exception as ex:
+                    print(f"[risk_profile chat] {ex}")
 
             # Generar sugerencias al final con la respuesta completa — prompt mínimo
             if agent_response.strip():
@@ -770,21 +822,23 @@ def autopilot_run(session_id):
                     historial_cliente.append({"role": "assistant", "content": msg_cliente})
                     historial_cliente.append({"role": "user", "content": agent_response[:200]})
 
+                    # Risk profile after each agent response
+                    try:
+                        conv_text = "\n".join(
+                            f"{t['role'].capitalize()}: {t['content'][:300]}"
+                            for t in transcripcion
+                        )
+                        risk = _analyze_risk_profile(conv_text)
+                        if risk:
+                            yield f"data: {json.dumps({'type': 'risk_profile', 'data': risk})}\n\n"
+                    except Exception as ex:
+                        print(f"[risk_profile autopilot] {ex}")
+
                     if any(k in agent_response.lower() for k in CIERRE_KEYWORDS):
                         decision = decision or "cancelado"
 
-            # Evaluación final
-            yield f"data: {json.dumps({'type': 'evaluating'})}\n\n"
-            try:
-                evaluacion = evaluar_conversacion(transcripcion, caso, decision)
-                print(f"[evaluacion] resultado: {json.dumps(evaluacion)[:200]}")
-                evaluacion["decision"] = decision
-                yield f"data: {json.dumps({'type': 'evaluation', 'data': evaluacion})}\n\n"
-            except Exception as eval_err:
-                import traceback
-                traceback.print_exc()
-                print(f"[evaluacion ERROR] {eval_err}")
-                yield f"data: {json.dumps({'type': 'evaluation', 'data': {'error': str(eval_err), 'decision': decision, 'score_global': 0, 'analisis': 'Error al evaluar.', 'niveles': {}}})}\n\n"
+            # Enviar datos de fin de conversación (la evaluación se lanza desde el frontend)
+            yield f"data: {json.dumps({'type': 'done_conversation', 'transcripcion': transcripcion, 'decision': decision})}\n\n"
 
         except Exception as e:
             import traceback
@@ -798,6 +852,27 @@ def autopilot_run(session_id):
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.route("/api/autopilot/evaluate", methods=["POST", "OPTIONS"])
+def autopilot_evaluate():
+    """Evalúa una conversación de autopilot bajo demanda."""
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data          = request.get_json()
+    transcripcion = data.get("transcripcion", [])
+    caso          = data.get("caso", {})
+    decision      = data.get("decision", "indeciso")
+
+    try:
+        evaluacion = evaluar_conversacion(transcripcion, caso, decision)
+        evaluacion["decision"] = decision
+        return jsonify(evaluacion)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e), "decision": decision}), 500
 
 
 # ── Arranque ──────────────────────────────────────────────────────────────────

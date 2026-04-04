@@ -2,38 +2,107 @@
   width: 340px;
   background: var(--bg-panel);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex-shrink: 0;
   overflow: hidden;
   transition: background 0.2s;
-  box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+  border-right: 1px solid var(--border);
   z-index: 1;
 }
 
-.admin-tabs {
+/* ── Vertical sidebar label (Palantir style) ── */
+.admin-sidebar-label {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 10px 8px;
-  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 58px;
+  flex-shrink: 0;
+  background: var(--bg-app);
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
-.admin-tab {
-  text-align: left;
-  padding: 10px 14px;
-  border-radius: 8px;
+.sidebar-title {
+  font-family: "Alliance No.2", sans-serif;
+  font-size: 18px;
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text);
+  white-space: nowrap;
+  transform: rotate(180deg);
+  margin: 0 auto;
+}
+
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Pill tab bar ── */
+.admin-tabs {
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 8px 6px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.admin-tab-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.admin-tab-label {
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding-left: 4px;
+  opacity: 0.5;
+}
+
+.admin-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  padding: 3px;
+}
+
+.admin-pill {
+  padding: 4px 8px;
+  border-radius: 2px;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
-.admin-tab:hover { background: var(--bg-hover); color: var(--text); }
-.admin-tab.active { background: var(--bg-active); color: var(--text); font-weight: 600; }
+.admin-pill:hover { color: var(--text); background: var(--bg-hover); }
 
+.admin-pill.active {
+  background: var(--text);
+  color: var(--bg-panel);
+  font-weight: 500;
+}
+
+/* ── Editor ── */
 .admin-editor {
   flex: 1;
   padding: 12px;
@@ -45,8 +114,8 @@
 .editor-wrap {
   position: relative;
   flex: 1;
-  border-radius: 8px;
-  background: var(--bg-textarea); /* fondo visible cuando textarea es transparente */
+  border-radius: 2px;
+  background: var(--bg-textarea);
 }
 
 /* Highlight layer — detrás del textarea, estilos de layout via JS */
@@ -54,7 +123,7 @@
   position: absolute;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  overflow: hidden;           /* scroll sincronizado por JS */
+  overflow: hidden;
   pointer-events: none;
   white-space: pre-wrap;
   word-break: break-word;
@@ -83,7 +152,7 @@
   width: 100%; height: 100%;
   background: var(--bg-textarea);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 2px;
   color: var(--text);
   font-family: "Menlo", "Monaco", "Courier New", monospace;
   font-size: 12px;
@@ -97,7 +166,6 @@
   transition: border-color 0.2s, color 0.2s;
 }
 
-/* Con búsqueda activa: fondo transparente para ver los highlights */
 .admin-textarea.search-active {
   background: transparent;
   border-color: var(--border-focus);
@@ -120,7 +188,7 @@
   flex: 1;
   background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px;
   color: var(--text);
   font-size: 12.5px;
   padding: 4px 8px;
@@ -170,7 +238,7 @@
   margin-left: auto;
   width: 30px;
   height: 30px;
-  border-radius: 7px;
+  border-radius: 2px;
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
@@ -186,17 +254,155 @@
 
 .save-btn {
   padding: 8px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #1a4f9c;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: 2px;
+  border: 1px solid var(--text);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background 0.15s, color 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
+
+.save-btn:not(:disabled):hover { background: var(--text); color: var(--bg-panel); }
 
 .save-btn:disabled { opacity: 0.4; cursor: default; }
 .save-btn:not(:disabled):hover { opacity: 0.85; }
 
 .unsaved { font-size: 12px; color: var(--text-muted); }
+
+/* ── Expand toggle ── */
+.expand-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.expand-toggle:hover { background: var(--bg-hover); color: var(--text); }
+
+/* ── Expanded modal overlay ── */
+.admin-expand-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+.admin-expand-modal {
+  width: calc(100vw - 40px);
+  height: calc(100vh - 40px);
+  background: var(--bg-panel);
+  border-radius: 4px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+.admin-expand-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.admin-expand-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.admin-expand-sidebar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 58px;
+  flex-shrink: 0;
+  background: var(--bg-app);
+  border-left: 1px solid var(--border);
+  padding: 24px 0;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.admin-expand-header {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.admin-expand-header .admin-tabs {
+  flex: 1;
+  border-bottom: none;
+  padding: 8px 12px;
+}
+
+.admin-expand-header .admin-pill {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.expand-close {
+  width: 48px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.expand-close:hover { background: var(--bg-hover); color: var(--text); }
+
+.admin-expand-editor {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  min-height: 0;
+}
+
+.admin-expand-editor .editor-wrap {
+  flex: 1;
+  position: relative;
+  border-radius: 2px;
+  background: var(--bg-textarea);
+}
+
+.admin-expand-editor .admin-textarea {
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 16px 20px;
+}
+
+.admin-expand-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

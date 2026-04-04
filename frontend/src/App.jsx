@@ -10,12 +10,12 @@ const MAX_WIDTH = 600
 const DEFAULT_WIDTH = 380
 
 export default function App() {
-  const [adminOpen, setAdminOpen] = useState(true)
+  const [appMode, setAppMode] = useState("ontologist") // "ontologist" | "user"
+  const [activeTab, setActiveTab] = useState("lab")     // "lab" | "test"
   const [adminWidth, setAdminWidth] = useState(DEFAULT_WIDTH)
   const [resetKey, setResetKey] = useState(0)
   const [theme, setTheme] = useState("light")
   const [chatLoading, setChatLoading] = useState(false)
-  const [autopilotMode, setAutopilotMode] = useState(false)
   const dragging = useRef(false)
   const startX = useRef(0)
   const startWidth = useRef(0)
@@ -58,30 +58,58 @@ export default function App() {
     window.addEventListener("mouseup", onMouseUp)
   }, [adminWidth])
 
+  const isOntologist = appMode === "ontologist"
+
   return (
     <div className="app">
       <Header
-        adminOpen={adminOpen}
-        adminWidth={adminWidth}
-        onToggleAdmin={() => setAdminOpen(o => !o)}
+        appMode={appMode}
+        onToggleMode={() => { setAppMode(m => m === "ontologist" ? "user" : "ontologist"); handleReset() }}
         onNewCase={handleReset}
         theme={theme}
         onToggleTheme={toggleTheme}
         loading={chatLoading}
-        autopilotMode={autopilotMode}
-        onToggleAutopilot={() => setAutopilotMode(m => !m)}
+        adminWidth={isOntologist ? adminWidth : undefined}
       />
       <div className="app-body">
-        {adminOpen && (
+        {isOntologist && (
           <>
             <AdminPanel onSaved={handleReset} width={adminWidth} />
             <div className="resize-handle" onMouseDown={onMouseDown} />
           </>
         )}
-        {autopilotMode
-          ? <AutopilotPanel key={`ap-${resetKey}`} onLoadingChange={setChatLoading} />
-          : <ChatPanel key={resetKey} onLoadingChange={setChatLoading} onNewCase={handleReset} />
-        }
+
+        {isOntologist ? (
+          <div className="center-panel">
+            <div className="center-nav">
+              <button
+                className={`center-nav-item ${activeTab === "lab" ? "active" : ""}`}
+                onClick={() => { setActiveTab("lab"); handleReset() }}
+              >
+                Autopilot
+              </button>
+              <button
+                className={`center-nav-item ${activeTab === "test" ? "active" : ""}`}
+                onClick={() => { setActiveTab("test"); handleReset() }}
+              >
+                Prueba manual
+              </button>
+            </div>
+            <div className="center-hero">
+              <h1 className="center-hero-title">
+                {activeTab === "lab" ? "Autopilot" : "Prueba Manual"}
+              </h1>
+            </div>
+            <div className="center-content">
+              {activeTab === "lab"
+                ? <AutopilotPanel key={`ap-${resetKey}`} onLoadingChange={setChatLoading} />
+                : <ChatPanel key={`test-${resetKey}`} onLoadingChange={setChatLoading} onNewCase={handleReset} showEval />
+              }
+            </div>
+          </div>
+        ) : (
+          <ChatPanel key={`user-${resetKey}`} onLoadingChange={setChatLoading} onNewCase={handleReset} />
+        )}
       </div>
     </div>
   )

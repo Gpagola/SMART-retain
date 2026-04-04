@@ -6,7 +6,7 @@
   flex: 1;
   overflow: hidden;
   background: var(--bg-chat);
-  font-family: 'Inter', sans-serif;
+  font-family: "Alliance No.2", sans-serif;
   min-height: 0;
 }
 
@@ -20,7 +20,7 @@
 
 .ap-config-title {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -43,7 +43,7 @@
 
 .ap-field label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -115,67 +115,6 @@
   margin-top: 12px;
 }
 
-/* ── Toggle "Agente de evolución" ── */
-.ap-evolve-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-}
-.ap-evolve-toggle:has(input:disabled) { opacity: 0.4; cursor: default; }
-
-.ap-evolve-track {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.ap-evolve-track input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.ap-evolve-thumb {
-  position: absolute;
-  inset: 0;
-  background: var(--border);
-  border-radius: 99px;
-  transition: background 0.2s;
-}
-.ap-evolve-thumb::after {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 14px;
-  height: 14px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-.ap-evolve-track input:checked ~ .ap-evolve-thumb {
-  background: linear-gradient(135deg, #4158d0, #c850c0);
-}
-.ap-evolve-track input:checked ~ .ap-evolve-thumb::after {
-  transform: translateX(16px);
-}
-
-.ap-evolve-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-.ap-evolve-track input:checked ~ + .ap-evolve-label,
-.ap-evolve-toggle:has(input:checked) .ap-evolve-label {
-  color: #4158d0;
-}
-
 .ap-btn-launch {
   height: 34px;
   padding: 0 16px;
@@ -184,7 +123,7 @@
   background: linear-gradient(135deg, #4158d0, #c850c0);
   color: #fff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
   box-shadow: 0 2px 8px rgba(65, 88, 208, 0.35);
@@ -199,7 +138,7 @@
   background: #1a4f9c;
   color: #fff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
 }
@@ -226,7 +165,7 @@
   background: #ef4444;
   color: #fff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
 }
@@ -251,7 +190,7 @@
 
 .ap-badge {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   padding: 2px 8px;
   border-radius: 99px;
   text-transform: uppercase;
@@ -278,6 +217,11 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px 24px;
+}
+
+.ap-transcript-inner {
+  max-width: clamp(600px, 52vw, 860px);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -296,9 +240,14 @@
   gap: 2px;
 }
 
+.ap-trace-radar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
 .ap-trace-title {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -393,7 +342,7 @@
 
 .ap-trace-turno-tag {
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -411,7 +360,7 @@
 
 .ap-trace-main {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
   white-space: nowrap;
   flex-shrink: 0;
@@ -452,7 +401,7 @@
 
 .ap-role-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -501,7 +450,7 @@
 .ap-turn-asistente .ap-turn-body p:last-child { margin-bottom: 0; }
 .ap-turn-asistente .ap-turn-body ul { margin: 4px 0 6px 16px; padding: 0; }
 .ap-turn-asistente .ap-turn-body li { margin-bottom: 2px; }
-.ap-turn-asistente .ap-turn-body strong { font-weight: 700; }
+.ap-turn-asistente .ap-turn-body strong { font-weight: 500; }
 
 /* ── Avatar ── */
 .ap-avatar {
@@ -509,7 +458,7 @@
   height: 22px;
   border-radius: 50%;
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -527,7 +476,7 @@
   color: var(--text-muted);
   padding: 4px 0;
 }
-.ap-status-row.evaluating { color: #7c3aed; font-weight: 600; }
+.ap-status-row.evaluating { color: #7c3aed; font-weight: 500; }
 
 .pulse-dot {
   width: 8px;
@@ -556,7 +505,7 @@
 
 .ap-eval-section-title {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -582,7 +531,7 @@
 
 .ap-resultado {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.04em;
 }
 .res-retenido  { color: #15803d; }
@@ -627,7 +576,7 @@
 
 .ap-nivel-label {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text);
   min-width: 160px;
 }
@@ -681,7 +630,7 @@
   background: #4158d0;
   color: #fff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: opacity 0.15s;
   white-space: nowrap;
@@ -692,14 +641,14 @@
 .ap-apply-ok {
   flex-shrink: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   color: #15803d;
 }
 
 .ap-apply-error {
   flex-shrink: 0;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   color: #b91c1c;
 }
 
@@ -733,7 +682,7 @@
 
 .score-num {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
   min-width: 36px;
   text-align: right;
 }
