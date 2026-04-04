@@ -129,16 +129,38 @@ export default function AdminPanel({ onSaved, width }) {
     if (e.key === "Escape") { toggleSearch() }
   }
 
-  useEffect(() => {
+  function loadOntologias(keepSelected) {
     fetch(`${API}/ontologias`)
       .then(r => r.json())
       .then(data => {
         setOntologias(data)
-        if (data.length) {
+        if (!keepSelected && data.length) {
           setSelected(data[0].nombre)
           setContenido(data[0].contenido)
+          setDirty(false)
+        } else if (keepSelected) {
+          // Actualizar contenido del tab activo con la versión más reciente
+          setSelected(prev => {
+            const updated = data.find(o => o.nombre === prev)
+            if (updated) {
+              setContenido(updated.contenido)
+              setDirty(false)
+            }
+            return prev
+          })
         }
       })
+  }
+
+  useEffect(() => {
+    loadOntologias(false)
+  }, [])
+
+  // Escuchar cambios externos (evaluación, agente autónomo)
+  useEffect(() => {
+    function onExternalChange() { loadOntologias(true) }
+    window.addEventListener("ontologia-updated", onExternalChange)
+    return () => window.removeEventListener("ontologia-updated", onExternalChange)
   }, [])
 
   function handleSelect(nombre) {
@@ -167,7 +189,7 @@ export default function AdminPanel({ onSaved, width }) {
     })
     setSaving(false)
     setDirty(false)
-    setOntologias(prev => prev.map(o => o.nombre === selected ? { ...o, contenido } : o))
+    loadOntologias(true)
     if (confirmReset) onSaved()
   }
 

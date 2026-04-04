@@ -110,8 +110,70 @@
 /* ── Actions ── */
 .ap-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 16px;
   margin-top: 12px;
+}
+
+/* ── Toggle "Agente de evolución" ── */
+.ap-evolve-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.ap-evolve-toggle:has(input:disabled) { opacity: 0.4; cursor: default; }
+
+.ap-evolve-track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.ap-evolve-track input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.ap-evolve-thumb {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 99px;
+  transition: background 0.2s;
+}
+.ap-evolve-thumb::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.ap-evolve-track input:checked ~ .ap-evolve-thumb {
+  background: linear-gradient(135deg, #4158d0, #c850c0);
+}
+.ap-evolve-track input:checked ~ .ap-evolve-thumb::after {
+  transform: translateX(16px);
+}
+
+.ap-evolve-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.ap-evolve-track input:checked ~ + .ap-evolve-label,
+.ap-evolve-toggle:has(input:checked) .ap-evolve-label {
+  color: #4158d0;
 }
 
 .ap-btn-launch {
@@ -487,17 +549,27 @@
   flex-shrink: 0;
   border-top: 2px solid var(--border);
   overflow-y: auto;
-  max-height: 45vh;
-  background: var(--bg-chat);
+  max-height: 52vh;
+  background: var(--bg-panel);
+  padding: 14px 24px 20px;
+}
+
+.ap-eval-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
 }
 
 /* ── Evaluation card ── */
 .ap-evaluation {
-  margin-top: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  background: var(--bg-panel);
+  background: var(--bg-chat);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .ap-eval-header {
@@ -592,6 +664,44 @@
   color: var(--text);
 }
 .ap-recomendacion p { margin: 4px 0 0; color: var(--text-muted); }
+
+.ap-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ap-btn-apply {
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #4158d0;
+  background: #4158d0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.ap-btn-apply:hover   { opacity: 0.85; }
+.ap-btn-apply:disabled { opacity: 0.5; cursor: default; }
+
+.ap-apply-ok {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.ap-apply-error {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+}
 
 .ap-ok {
   color: #15803d;

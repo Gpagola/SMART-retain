@@ -72,7 +72,7 @@ export default function App() {
         onToggleAutopilot={() => setAutopilotMode(m => !m)}
       />
       <div className="app-body">
-        {adminOpen && !autopilotMode && (
+        {adminOpen && (
           <>
             <AdminPanel onSaved={handleReset} width={adminWidth} />
             <div className="resize-handle" onMouseDown={onMouseDown} />
@@ -80,7 +80,7 @@ export default function App() {
         )}
         {autopilotMode
           ? <AutopilotPanel key={`ap-${resetKey}`} onLoadingChange={setChatLoading} />
-          : <ChatPanel key={resetKey} onLoadingChange={setChatLoading} />
+          : <ChatPanel key={resetKey} onLoadingChange={setChatLoading} onNewCase={handleReset} />
         }
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
+import { EvaluationModal } from "./EvaluationCard"
 import "./ChatPanel.css"
 
 const API = import.meta.env.VITE_API_URL || "/api"
@@ -7,7 +8,7 @@ const API = import.meta.env.VITE_API_URL || "/api"
 const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.webp"
 
 
-export default function ChatPanel({ onLoadingChange }) {
+export default function ChatPanel({ onLoadingChange, onNewCase }) {
   const [sessionId, setSessionId]   = useState(null)
   const [messages, setMessages]     = useState([])
   const [input, setInput]           = useState("")
@@ -17,13 +18,18 @@ export default function ChatPanel({ onLoadingChange }) {
   const [isStreaming, setIsStreaming]   = useState(false)
   const [suggestions, setSuggestions]   = useState([])
   const [agentStatus, setAgentStatus]   = useState("")
+  const [evaluating, setEvaluating]     = useState(false)
+  const [evaluation, setEvaluation]     = useState(null)
+  const [ended, setEnded]               = useState(false)
   const bottomRef    = useRef(null)
   const textareaRef  = useRef(null)
   const abortRef     = useRef(null)
   const fileInputRef = useRef(null)
   const genRef       = useRef(0)
+  const messagesRef  = useRef([])
+  const polizaRef    = useRef(null)
 
-  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza, onSuggestions) {
+  async function streamChat(message, sessionId, controller, onToken, onStatus, onPoliza, onSuggestions, onCierre) {
     const res = await fetch(`${API}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,12 +58,42 @@ export default function ChatPanel({ onLoadingChange }) {
           if (parsed.status) onStatus?.(parsed.status)
           if (parsed.poliza) onPoliza?.(parsed.poliza)
           if (parsed.suggestions) onSuggestions?.(parsed.suggestions)
+          if (parsed.cierre) onCierre?.()
           if (parsed.token) { onStatus?.(""); onToken(parsed.token) }
         } catch (e) {
           if (e.message !== "SyntaxError") throw e
         }
       }
     }
+  }
+
+  async function evaluateChat(currentMessages, currentPoliza) {
+    setEvaluating(true)
+    setEvaluation(null)
+    try {
+      const r = await fetch(`${API}/chat/evaluate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: currentMessages, poliza: currentPoliza }),
+      })
+      const data = await r.json()
+      if (data.error) throw new Error(data.error)
+      setEvaluation(data)
+    } catch (e) {
+      console.error("[evaluate]", e)
+    } finally {
+      setEvaluating(false)
+    }
+  }
+
+  function handleEvaluar() {
+    abortRef.current?.abort()         // corta cualquier stream en curso
+    setEnded(true)
+    evaluateChat(messagesRef.current, polizaRef.current)
+  }
+
+  function handleModalClose() {
+    onNewCase?.()                     // resetea ChatPanel via key change en App
   }
 
   useEffect(() => {
@@ -96,6 +132,14 @@ export default function ChatPanel({ onLoadingChange }) {
   }, [])
 
   useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  useEffect(() => {
+    polizaRef.current = poliza
+  }, [poliza])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
 
@@ -115,6 +159,7 @@ export default function ChatPanel({ onLoadingChange }) {
     setInput("")
     setAttachedFile(null)
     setSuggestions([])
+    setEvaluation(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
 
     const displayText = fileToSend
@@ -161,7 +206,11 @@ export default function ChatPanel({ onLoadingChange }) {
             return msgs
           })
         }
-      }, setAgentStatus, setPoliza, (s) => setSuggestions(s))
+      }, setAgentStatus, setPoliza, (s) => setSuggestions(s),
+      () => {
+        // Auto-evaluación al detectar cierre — 100ms para que el estado de mensajes se actualice
+        setTimeout(() => { setEnded(true); evaluateChat(messagesRef.current, polizaRef.current) }, 100)
+      })
     } catch (e) {
       if (e.name !== "AbortError")
         setMessages(prev => [...prev, { role: "assistant", content: `⚠️ Error: ${e.message}` }])
@@ -288,6 +337,15 @@ export default function ChatPanel({ onLoadingChange }) {
         <div ref={bottomRef} />
       </div>
 
+      {/* ── Modal de evaluación ── */}
+      {(evaluating || evaluation) && (
+        <EvaluationModal
+          evaluation={evaluation}
+          evaluating={evaluating}
+          onClose={handleModalClose}
+        />
+      )}
+
       <div className="input-area">
         {suggestions.length > 0 && !loading && (
           <div className="suggestions">
@@ -319,51 +377,61 @@ export default function ChatPanel({ onLoadingChange }) {
             </button>
           </div>
         )}
-        <div className="input-box">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED}
-            style={{ display: "none" }}
-            onChange={handleFileChange}
-          />
-          <button
-            className="attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={!sessionId}
-            title="Adjuntar PDF o imagen"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-            </svg>
-          </button>
-          <textarea
-            ref={textareaRef}
-            className="chat-input"
-            placeholder="Escribe un mensaje..."
-            value={input}
-            onChange={handleInput}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            disabled={!sessionId}
-          />
-          {loading ? (
-            <button className="stop-btn" onClick={handleStop} title="Detener respuesta">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2"/>
-              </svg>
-            </button>
-          ) : (
+        <div className="input-row">
+          <div className="input-box">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED}
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
             <button
-              className="send-btn"
-              onClick={sendMessage}
-              disabled={(!input.trim() && !attachedFile) || !sessionId}
+              className="attach-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!sessionId}
+              title="Adjuntar PDF o imagen"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
               </svg>
             </button>
-          )}
+            <textarea
+              ref={textareaRef}
+              className="chat-input"
+              placeholder={ended ? "Conversación finalizada" : "Escribe un mensaje..."}
+              value={input}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+              rows={1}
+              disabled={!sessionId || ended}
+            />
+            {!ended && (loading ? (
+              <button className="stop-btn" onClick={handleStop} title="Detener respuesta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                </svg>
+              </button>
+            ) : (
+              <button
+                className="send-btn"
+                onClick={sendMessage}
+                disabled={(!input.trim() && !attachedFile) || !sessionId}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              </button>
+            ))}
+          </div>
+          <button
+            className="eval-btn"
+            title="Evaluar conversación"
+            disabled={messages.length < 2 || loading || evaluating || ended}
+            onClick={handleEvaluar}
+          >
+            {evaluating ? "Evaluando..." : "Evaluar"}
+          </button>
         </div>
         <p className="disclaimer">Desarrollado por Braintrust CS firma miembro de Andersen Consulting</p>
       </div>

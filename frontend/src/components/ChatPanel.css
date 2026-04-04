@@ -217,7 +217,14 @@
   margin: 0 auto;
 }
 
+.input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
 .input-box {
+  flex: 1;
   display: flex;
   align-items: flex-end;
   gap: 8px;
@@ -374,4 +381,55 @@
   font-size: 11px;
   color: var(--text-faint);
   margin-top: 10px;
+}
+
+/* ── Botón Evaluar ── */
+.eval-btn {
+  flex-shrink: 0;
+  height: 46px;
+  padding: 0 20px;
+  border-radius: 14px;
+  border: 2px solid #4158d0;
+  background: transparent;
+  color: #4158d0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.eval-btn:hover:not(:disabled) { background: #4158d0; color: #fff; }
+.eval-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── Panel de evaluación ── */
+.chat-eval-section {
+  flex-shrink: 0;
+  border-top: 2px solid var(--border);
+  background: var(--bg-panel);
+  padding: 14px 24px 20px;
+  overflow-y: auto;
+  max-height: 50vh;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.chat-eval-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.chat-eval-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #7c3aed;
+  font-weight: 600;
 }

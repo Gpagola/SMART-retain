@@ -258,6 +258,12 @@ def chat():
                 except Exception as ex:
                     print(f"[suggestions error] {ex}")
 
+                # Detectar cierre de conversación
+                CIERRE_KEYWORDS = ["buen día", "buenas noches", "hasta luego", "que tenga",
+                                   "cuídese", "no dude en contactar", "fue un placer"]
+                if any(k in agent_response.lower() for k in CIERRE_KEYWORDS):
+                    yield f"data: {json.dumps({'cierre': True})}\n\n"
+
             yield "data: [DONE]\n\n"
         except Exception as e:
             print(f"ERROR en /api/chat: {e}")
@@ -387,10 +393,55 @@ def listar_ontologias():
     ])
 
 
+def _guardar_nueva_version(nombre: str, contenido: str) -> str:
+    """
+    Desactiva la versión activa e inserta una nueva fila.
+    Devuelve el número de versión nuevo.
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        # Obtener versión actual
+        cur.execute(
+            "SELECT version FROM ontologias WHERE nombre = %s AND activo = TRUE ORDER BY id DESC LIMIT 1",
+            (nombre,)
+        )
+        row = cur.fetchone()
+        version_actual = row[0] if row else "1.0"
+        try:
+            nueva_version = f"{float(version_actual) + 0.1:.1f}"
+        except (ValueError, TypeError):
+            nueva_version = "1.1"
+
+        cur.execute(
+            "UPDATE ontologias SET activo = FALSE WHERE nombre = %s AND activo = TRUE",
+            (nombre,)
+        )
+        cur.execute(
+            "INSERT INTO ontologias (nombre, version, contenido, activo) VALUES (%s, %s, %s, TRUE)",
+            (nombre, nueva_version, contenido)
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return nueva_version
+
+
+def _on_ontology_changed(nombre: str):
+    """Invalida cache y, si cambia el system-prompt, fuerza recarga del agente."""
+    global _agent, _checkpointer
+    invalidate_ontology_cache(nombre)
+    if nombre in ("system-prompt", None):
+        # El system-prompt está baked en el agente; hay que reconstruirlo
+        _agent = None
+        _checkpointer = None
+
+
 @app.route("/api/ontologias/<nombre>", methods=["PUT"])
 def actualizar_ontologia(nombre):
     """
-    Actualiza el contenido de una ontología por nombre.
+    Guarda una nueva versión de la ontología (dejar la anterior inactiva).
     Body: { "contenido": "..." }
     """
     data      = request.get_json()
@@ -399,21 +450,141 @@ def actualizar_ontologia(nombre):
     if not contenido:
         return jsonify({"error": "contenido es requerido"}), 400
 
+    nueva_version = _guardar_nueva_version(nombre, contenido)
+    _on_ontology_changed(nombre)
+    return jsonify({"ok": True, "version": nueva_version})
+
+
+@app.route("/api/chat/evaluate", methods=["POST", "OPTIONS"])
+def chat_evaluate():
+    """
+    Evalúa una conversación manual usando el mismo evaluador del autopilot.
+    Body: { "messages": [{role, content}], "poliza": {...} }
+    """
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data     = request.get_json()
+    messages = data.get("messages", [])
+    poliza   = data.get("poliza") or {}
+
+    # Convertir al formato que espera evaluar_conversacion
+    transcripcion = [
+        {
+            "role": "ejecutivo" if m["role"] == "user" else "asistente",
+            "content": m["content"],
+        }
+        for m in messages if m.get("content", "").strip()
+    ]
+
+    caso = {
+        "numero_poliza": poliza.get("numero", "N/A"),
+        "ramo":          poliza.get("ramo", "N/A"),
+        "rentabilidad":  poliza.get("rentabilidad", "N/A"),
+        "cliente":       poliza.get("cliente", "N/A"),
+        "motivo":        "modo manual",
+        "personalidad":  "modo manual",
+    }
+
+    try:
+        evaluacion = evaluar_conversacion(transcripcion, caso, "indeciso")
+        return jsonify(evaluacion)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/autopilot/apply-recommendation", methods=["POST"])
+def apply_recommendation():
+    """
+    Aplica quirúrgicamente una recomendación del evaluador a la ontología correspondiente.
+    Guarda una nueva versión en la BD y invalida el cache.
+    Body: { "nivel": "system_prompt|ontologia_reglas|ontologia_diferenciadores",
+            "recomendacion": "..." }
+    """
+    data = request.get_json()
+    nivel        = data.get("nivel", "").strip()
+    recomendacion = data.get("recomendacion", "").strip()
+
+    if not nivel or not recomendacion:
+        return jsonify({"error": "nivel y recomendacion son requeridos"}), 400
+
+    # Mapeo nivel evaluación → nombre en BD
+    NIVEL_TO_NOMBRE = {
+        "system_prompt":            "system-prompt",
+        "ontologia_reglas":          "ontologia-reglas",
+        "ontologia_diferenciadores": "ontologia-diferenciadores",
+    }
+    nombre = NIVEL_TO_NOMBRE.get(nivel)
+    if not nombre:
+        return jsonify({"error": f"nivel desconocido: {nivel}"}), 400
+
+    # Cargar contenido y versión actuales
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("""
-            UPDATE ontologias
-            SET contenido = %s
-            WHERE nombre = %s AND activo = TRUE
-        """, (contenido, nombre))
-        conn.commit()
+        cur.execute(
+            "SELECT contenido, version FROM ontologias WHERE nombre = %s AND activo = TRUE ORDER BY id DESC LIMIT 1",
+            (nombre,)
+        )
+        row = cur.fetchone()
         cur.close()
     finally:
         conn.close()
 
-    invalidate_ontology_cache(nombre)
-    return jsonify({"ok": True})
+    if not row:
+        return jsonify({"error": f"No se encontró la ontología '{nombre}'"}), 404
+
+    contenido_actual = row[0]
+
+    # GPT-4o aplica el cambio quirúrgicamente
+    openai_client = OpenAI()
+    SYSTEM_APLICAR = (
+        "Eres un experto en sistemas de retención de clientes para aseguradoras. "
+        "Tu tarea es aplicar una mejora puntual a un fragmento de ontología de un agente de IA.\n\n"
+        "Reglas de aplicación:\n"
+        "- Aplica ÚNICAMENTE el cambio recomendado, sin alterar el contenido no relacionado\n"
+        "- Mantén el formato, estructura y estilo del texto original\n"
+        "- Si la recomendación indica agregar texto, agrégalo en el lugar más apropiado\n"
+        "- Si indica modificar algo específico, modifícalo con precisión quirúrgica\n"
+        "- Devuelve SOLO el texto completo actualizado, sin explicaciones ni marcadores extra\n\n"
+        "RESTRICCIÓN sobre el cambio que aplicas (no sobre el contenido existente):\n"
+        "- No introduzcas contenido nuevo que incluya descuentos, bonificaciones, rebajas de precio, "
+        "cuotas especiales, nuevas coberturas, cambios de tarifa ni concesiones económicas\n"
+        "- Si la recomendación recibida sugiere algo de lo anterior, conviértela en su equivalente "
+        "de argumentación y valor percibido: enfatiza beneficios existentes, confianza, historial "
+        "y valor emocional del producto, sin prometer nada que implique coste\n"
+        "- El contenido que YA EXISTE en la ontología no debe ser cuestionado ni eliminado, "
+        "aunque incluya referencias a precios o condiciones comerciales"
+    )
+    prompt = (
+        f"ONTOLOGÍA ACTUAL ({nombre}):\n"
+        f"---\n{contenido_actual}\n---\n\n"
+        f"RECOMENDACIÓN A APLICAR:\n{recomendacion}\n\n"
+        f"Devuelve el texto completo de la ontología con el cambio aplicado."
+    )
+
+    try:
+        resp = openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": SYSTEM_APLICAR},
+                {"role": "user",   "content": prompt},
+            ],
+            temperature=0.2,
+            max_tokens=4000,
+        )
+        contenido_nuevo = resp.choices[0].message.content.strip()
+    except Exception as e:
+        return jsonify({"error": f"Error al generar cambio: {str(e)}"}), 500
+
+    nueva_version = _guardar_nueva_version(nombre, contenido_nuevo)
+    _on_ontology_changed(nombre)
+
+    return jsonify({
+        "ok":      True,
+        "nombre":  nombre,
+        "version": nueva_version,
+    })
 
 
 # ── Endpoints de Autopilot ────────────────────────────────────────────────────
@@ -474,7 +645,7 @@ def autopilot_run(session_id):
         decision = "indeciso"
 
         try:
-            from langchain_core.messages import HumanMessage
+            from langchain_core.messages import HumanMessage, AIMessage
             from chatbot import build_agent, MySQLSaver, preload_ontologies
             from autopilot import _generar_mensaje_cliente
 
@@ -484,12 +655,20 @@ def autopilot_run(session_id):
             preload_ontologies()
             config = {"configurable": {"thread_id": session_id}}
 
+            # Inyectar saludo falso para que el agente no salude de nuevo
+            # y vaya directo a buscar la póliza con el primer mensaje real
+            agent.update_state(config, {"messages": [
+                HumanMessage(content="Hola"),
+                AIMessage(content="¡Hola! Soy el asistente de retención. ¿En qué te puedo ayudar hoy?"),
+            ]})
+
             historial_cliente = []
 
             # Turno 0: ejecutivo presenta el caso al agente
             primer_msg = (
-                f"Póliza {caso['numero_poliza']}, {caso['ramo']}. "
-                f"Cliente quiere cancelar: {caso['motivo']}."
+                f"Tengo al cliente {caso['cliente']} en línea, póliza {caso['numero_poliza']}, ramo {caso['ramo']}. "
+                f"Quiere cancelar porque: {caso['motivo']}. "
+                f"Busca la póliza y ayúdame a retenerlo."
             )
             transcripcion.append({"role": "ejecutivo", "content": primer_msg})
             yield f"data: {json.dumps({'type': 'turn', 'role': 'ejecutivo', 'content': primer_msg})}\n\n"

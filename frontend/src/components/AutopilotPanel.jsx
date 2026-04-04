@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import ReactMarkdown from "react-markdown"
+import { EvaluationModal } from "./EvaluationCard"
 import "./AutopilotPanel.css"
 
 const API = import.meta.env.VITE_API_URL || "/api"
@@ -9,19 +10,6 @@ const TOOL_LABELS = {
   ontologia_reglas:          "Validando reglas...",
   ontologia_diferenciadores: "Analizando diferenciadores...",
   analizar_documento:        "Analizando documento...",
-}
-
-function ScoreBar({ score }) {
-  const pct = (score / 10) * 100
-  const color = score >= 8 ? "#22c55e" : score >= 6 ? "#f59e0b" : "#ef4444"
-  return (
-    <div className="score-bar-wrap">
-      <div className="score-bar-track">
-        <div className="score-bar-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="score-num" style={{ color }}>{score}/10</span>
-    </div>
-  )
 }
 
 function RoleAvatar({ role }) {
@@ -46,8 +34,8 @@ export default function AutopilotPanel({ onLoadingChange }) {
   const [toolStatus, setToolStatus] = useState("")
   const [evaluating, setEvaluating] = useState(false)
   const [evaluation, setEvaluation] = useState(null)
-  const [expandedRec, setExpanded]  = useState(null)
   const [traceEvents, setTrace]     = useState([])     // eventos internos del agente
+  const [autoEvolve, setAutoEvolve] = useState(false)
 
   const abortRef   = useRef(null)
   const bottomRef  = useRef(null)
@@ -280,16 +268,26 @@ export default function AutopilotPanel({ onLoadingChange }) {
 
         <div className="ap-actions">
           {!running ? (
-            <>
-              <button className="ap-btn-launch" onClick={launchManual}>
-                Lanzar
-              </button>
-            </>
+            <button className="ap-btn-launch" onClick={launchManual}>
+              Lanzar
+            </button>
           ) : (
             <button className="ap-btn-stop" onClick={handleStop}>
               Detener
             </button>
           )}
+          <label className="ap-evolve-toggle" title="Aplica automáticamente todas las mejoras sugeridas al finalizar">
+            <span className="ap-evolve-track">
+              <input
+                type="checkbox"
+                checked={autoEvolve}
+                onChange={e => setAutoEvolve(e.target.checked)}
+                disabled={running}
+              />
+              <span className="ap-evolve-thumb" />
+            </span>
+            <span className="ap-evolve-label">Agente de evolución</span>
+          </label>
         </div>
       </div>
 
@@ -419,75 +417,14 @@ export default function AutopilotPanel({ onLoadingChange }) {
       </div>
       )}
 
-      {/* ── Evaluación — banda fija debajo del body ── */}
-      {hasStarted && (evaluating || evaluation) && (
-        <div className="ap-eval-section">
-          {evaluating && !evaluation && (
-            <div className="ap-status-row evaluating" style={{padding: "12px 20px"}}>
-              <span className="pulse-dot" />
-              <span>Evaluando conversación con GPT-4o...</span>
-            </div>
-          )}
-          {evaluation && (() => {
-            const dec = evaluation.decision || evaluation.resultado || "indeciso"
-            return (
-              <div className="ap-evaluation">
-                <div className="ap-eval-header">
-                  <div className={`ap-resultado res-${dec}`}>
-                    {dec === "retenido"  && "✓ RETENIDO"}
-                    {dec === "cancelado" && "✗ CANCELADO"}
-                    {dec === "indeciso"  && "— INDECISO"}
-                  </div>
-                  <div className="ap-global-score">
-                    Score global <strong>{evaluation.score_global}/10</strong>
-                  </div>
-                </div>
-                {evaluation.analisis && (
-                  <p className="ap-analisis">{evaluation.analisis}</p>
-                )}
-                <div className="ap-niveles">
-                  {[
-                    { key: "system_prompt",            label: "System Prompt" },
-                    { key: "ontologia_reglas",          label: "Reglas de Retención" },
-                    { key: "ontologia_diferenciadores", label: "Diferenciadores" },
-                  ].map(({ key, label }) => {
-                    const nivel = evaluation.niveles?.[key]
-                    if (!nivel) return null
-                    const isOpen = expandedRec === key
-                    return (
-                      <div key={key} className={`ap-nivel ${isOpen ? "open" : ""}`}>
-                        <div className="ap-nivel-header" onClick={() => setExpanded(isOpen ? null : key)}>
-                          <span className="ap-nivel-label">{label}</span>
-                          <ScoreBar score={nivel.score} />
-                          <span className="ap-nivel-chevron">{isOpen ? "▲" : "▼"}</span>
-                        </div>
-                        {isOpen && (
-                          <div className="ap-nivel-detail">
-                            {nivel.problemas?.length > 0 && (
-                              <div className="ap-problemas">
-                                <strong>Problemas detectados:</strong>
-                                <ul>{nivel.problemas.map((p, i) => <li key={i}>{p}</li>)}</ul>
-                              </div>
-                            )}
-                            {nivel.recomendacion && (
-                              <div className="ap-recomendacion">
-                                <strong>Recomendación:</strong>
-                                <p>{nivel.recomendacion}</p>
-                              </div>
-                            )}
-                            {!nivel.problemas?.length && !nivel.recomendacion && (
-                              <p className="ap-ok">Sin observaciones.</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })()}
-        </div>
+      {/* ── Modal de evaluación ── */}
+      {(evaluating || evaluation) && (
+        <EvaluationModal
+          evaluation={evaluation}
+          evaluating={evaluating}
+          autoApply={autoEvolve}
+          onClose={() => { setEvaluation(null); setEvaluating(false) }}
+        />
       )}
 
       {!hasStarted && (

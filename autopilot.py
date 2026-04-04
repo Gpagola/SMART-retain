@@ -233,6 +233,18 @@ Para cada dimensión:
 - Lista de problemas detectados (puede estar vacía)
 - Recomendación concreta de texto a agregar/modificar en esa ontología
 
+RESTRICCIÓN CRÍTICA — todas las recomendaciones deben basarse EXCLUSIVAMENTE en:
+- Argumentación, persuasión y técnicas de negociación
+- Valor percibido, beneficios existentes y diferenciales del producto actual
+- Ajuste de tono, empatía y personalización del discurso
+- Uso más efectivo de la información ya disponible (póliza, historial, coberturas)
+
+NUNCA recomiendes ni insinúes:
+- Descuentos, bonificaciones, promociones o rebajas de precio
+- Nuevas coberturas, mejoras de producto o cambios de tarifa
+- Ofertas especiales, cuotas reducidas o cualquier concesión económica
+- Cualquier acción que implique coste o aprobación presupuestaria
+
 Además:
 - Score global ponderado
 - Resultado: "retenido", "cancelado" o "indeciso"
