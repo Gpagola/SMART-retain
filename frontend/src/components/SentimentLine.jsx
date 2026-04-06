@@ -26,7 +26,7 @@ function catmullRomPath(xs, ys, tension = 0.35) {
 export default function SentimentLine({ points }) {
   if (!points || points.length === 0) {
     return (
-      <div className="sentiment-chart">
+      <div className="sentiment-chart" title="Evolución del sentimiento: traza la curva emocional del cliente a lo largo de la conversación, desde negativo (frustración, enojo) hasta positivo (receptividad, satisfacción). Permite detectar en qué momento las ontologías logran girar el sentimiento y dónde fallan, orientando las mejoras del prompt y las reglas de retención.">
         <span className="sentiment-title">Sentimiento</span>
         <span className="sentiment-waiting">—</span>
       </div>
@@ -51,7 +51,7 @@ export default function SentimentLine({ points }) {
   const label = last > 10 ? "Positivo" : last < -10 ? "Negativo" : "Neutro"
 
   return (
-    <div className="sentiment-chart">
+    <div className="sentiment-chart" title="Evolución del sentimiento: traza la curva emocional del cliente a lo largo de la conversación, desde negativo (frustración, enojo) hasta positivo (receptividad, satisfacción). Permite detectar en qué momento las ontologías logran girar el sentimiento y dónde fallan, orientando las mejoras del prompt y las reglas de retención.">
       <span className="sentiment-title">Sentimiento</span>
       <svg viewBox={`0 0 ${W} ${H}`} className="sentiment-svg">
         {/* Y axis */}

@@ -1,3 +1,10 @@
+.chat-panel-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .chat-panel {
   flex: 1;
   display: flex;
@@ -31,8 +38,10 @@
   justify-content: center;
   gap: 10px;
   padding: 14px 24px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
   font-size: 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
@@ -421,7 +430,7 @@
 /* ── Botón Fin ── */
 .eval-btn {
   flex-shrink: 0;
-  height: 44px;
+  align-self: stretch;
   padding: 0 20px;
   border-radius: 2px;
   border: 1px solid var(--text);
@@ -469,3 +478,131 @@
   color: var(--text-muted);
   font-weight: 400;
 }
+
+/* ── Poliza picker popup ── */
+.poliza-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 8000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pp-fade 0.15s ease;
+}
+
+@keyframes pp-fade {
+  from { opacity: 0; } to { opacity: 1; }
+}
+
+.poliza-picker {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  width: 90%;
+  max-width: 520px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: pp-scale 0.2s ease;
+}
+
+@keyframes pp-scale {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.poliza-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.poliza-picker-title {
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text);
+}
+
+.poliza-picker-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  transition: background 0.15s, color 0.15s;
+}
+.poliza-picker-close:hover { background: var(--bg-hover); color: var(--text); }
+
+.poliza-picker-table-wrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.poliza-picker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 12px;
+}
+
+.poliza-picker-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.poliza-picker-table tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.poliza-picker-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.poliza-picker-table tbody td {
+  padding: 10px 16px;
+  color: var(--text);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.pp-numero {
+  font-weight: 500;
+}
+
+.pp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.pp-badge.rent-alta   { color: var(--text); }
+.pp-badge.rent-media  { color: var(--text-muted); }
+.pp-badge.rent-baja   { color: var(--text-muted); }

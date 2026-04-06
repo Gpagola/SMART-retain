@@ -15,6 +15,12 @@ const TOOL_LABELS = {
   analizar_documento:        "Analizando documento...",
 }
 
+function formatAssistantMsg(text) {
+  return text.replace(/[""\u00ab]([^""\u00bb]{30,})[""\u00bb]/g, (_, quoted) => {
+    return '\n\n> 💬 *' + quoted.trim() + '*\n\n'
+  })
+}
+
 function RoleAvatar({ role }) {
   if (role === "asistente") return <div className="ap-avatar agent">SR</div>
   if (role === "cliente")   return <div className="ap-avatar client">CL</div>
@@ -276,9 +282,9 @@ export default function AutopilotPanel({ onLoadingChange }) {
       {/* ── Config (arriba, siempre visible) ── */}
       <div className="ap-config">
         <div className="ap-config-row">
-          <div className="ap-field">
+          <div className="ap-field-inline">
             <label>Póliza</label>
-            <select value={poliza} onChange={e => setPoliza(e.target.value)} disabled={running}>
+            <select value={poliza} onChange={e => setPoliza(e.target.value)} disabled={running} title="Selecciona una póliza concreta de la base de datos para la simulación, o deja en 'Aleatoria' para que el sistema elija una al azar. La póliza determina el perfil del cliente (ramo, antigüedad, rentabilidad, siniestralidad) que el asistente SR usará para adaptar su estrategia de retención según las ontologías.">
               <option value="">Aleatoria</option>
               {opciones.polizas.map(p => (
                 <option key={p.numero_poliza} value={p.numero_poliza}>
@@ -287,39 +293,31 @@ export default function AutopilotPanel({ onLoadingChange }) {
               ))}
             </select>
           </div>
-          <div className="ap-field">
-            <label>Motivo de cancelación</label>
-            <input
-              list="motivos-list"
-              value={motivo}
-              onChange={e => setMotivo(e.target.value)}
-              placeholder="Aleatorio"
-              disabled={running}
-            />
-            <datalist id="motivos-list">
-              {opciones.motivos.map(m => <option key={m} value={m} />)}
-            </datalist>
+          <div className="ap-field-inline">
+            <label>Motivo</label>
+            <select value={motivo} onChange={e => setMotivo(e.target.value)} disabled={running} title="Motivo de cancelación que el cliente simulado planteará al asistente. Permite probar cómo las ontologías manejan distintos escenarios: precio alto, mala experiencia, competencia, falta de uso, situación económica, etc. Dejar en 'Aleatorio' genera variedad en las pruebas.">
+              <option value="">Aleatorio</option>
+              {opciones.motivos.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           </div>
-          <div className="ap-field">
-            <label>Personalidad del cliente</label>
-            <input
-              list="personalidades-list"
-              value={personalidad}
-              onChange={e => setPersona(e.target.value)}
-              placeholder="Aleatoria"
-              disabled={running}
-            />
-            <datalist id="personalidades-list">
-              {opciones.personalidades.map(p => <option key={p} value={p} />)}
-            </datalist>
+          <div className="ap-field-inline">
+            <label>Persona</label>
+            <select value={personalidad} onChange={e => setPersona(e.target.value)} disabled={running} title="Personalidad del cliente IA que participa en la simulación. Cada perfil (agresivo, indeciso, racional, emocional, etc.) pone a prueba diferentes aspectos de las ontologías: manejo de objeciones, empatía, argumentación técnica y estrategias de retención.">
+              <option value="">Aleatoria</option>
+              {opciones.personalidades.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
           <div className="ap-field ap-field-action">
             {!running ? (
-              <button className="ap-btn-launch" onClick={launchManual}>
+              <button className="ap-btn-launch" onClick={launchManual} title="Lanzar la simulación completa: un cliente IA conversará con el asistente SR usando las ontologías activas. Al finalizar, el evaluador analizará la conversación en tres niveles y propondrá mejoras a las ontologías que podrás aplicar automáticamente.">
                 Iniciar
               </button>
             ) : (
-              <button className="ap-btn-stop" onClick={handleStop}>
+              <button className="ap-btn-stop" onClick={handleStop} title="Detener la simulación en curso. La conversación generada hasta este punto se conserva pero no se evaluará automáticamente. Útil si detectas un problema evidente en las ontologías y quieres corregirlo antes de gastar otra ejecución.">
                 Detener
               </button>
             )}
@@ -375,7 +373,7 @@ export default function AutopilotPanel({ onLoadingChange }) {
               )}
               <div className="ap-turn-body">
                 {t.role === "asistente"
-                  ? <ReactMarkdown>{t.content}</ReactMarkdown>
+                  ? <ReactMarkdown>{formatAssistantMsg(t.content)}</ReactMarkdown>
                   : <span>{t.content}</span>
                 }
               </div>
@@ -425,8 +423,8 @@ export default function AutopilotPanel({ onLoadingChange }) {
             <h3>Conversación finalizada</h3>
             <p>¿Deseas ejecutar el agente optimizador para analizar la conversación y sugerir mejoras a la ontología?</p>
             <div className="ap-opt-actions">
-              <button className="ap-opt-yes" onClick={handleOptimize}>Sí, optimizar</button>
-              <button className="ap-opt-no" onClick={handleSkipOptimize}>No, nuevo caso</button>
+              <button className="ap-opt-yes" onClick={handleOptimize} title="Ejecutar el agente optimizador: analizará los problemas detectados por el evaluador y reescribirá las secciones débiles de las ontologías (prompt, reglas o diferenciadores) para mejorar las respuestas del asistente en futuras conversaciones.">Sí, optimizar</button>
+              <button className="ap-opt-no" onClick={handleSkipOptimize} title="Omitir la optimización automática y pasar directamente a un nuevo caso de prueba. Útil si la evaluación fue satisfactoria o si prefieres ajustar las ontologías manualmente desde el panel de administración.">No, nuevo caso</button>
             </div>
           </div>
         </div>

@@ -68,7 +68,7 @@ export default function RadarChart({ data }) {
   const polyStr = pts.map(([x, y]) => `${x},${y}`).join(" ")
 
   return (
-    <div className="radar-chart">
+    <div className="radar-chart" title="Radar de motivos de baja: muestra en tiempo real los factores de cancelación que el cliente menciona durante la conversación (competencia, experiencia, valor percibido, vinculación, situación personal y precio). Permite identificar qué áreas de las ontologías necesitan refuerzo para cubrir mejor cada tipo de objeción.">
       <div className="radar-header">
         <span className="radar-title">Motivos de baja</span>
         {!hasData && <span className="radar-waiting">Esperando conversación</span>}

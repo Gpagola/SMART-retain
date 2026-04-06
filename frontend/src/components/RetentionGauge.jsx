@@ -40,7 +40,7 @@ export default function RetentionGauge({ value }) {
   const label = anim >= 70 ? "Alta" : anim >= 40 ? "Media" : "Baja"
 
   return (
-    <div className="gauge-chart">
+    <div className="gauge-chart" title="Probabilidad de retención: estima en tiempo real las posibilidades de que el cliente mantenga su póliza, calculada a partir del tono de la conversación, los argumentos del asistente y la receptividad del cliente. Un indicador clave para evaluar si las ontologías están generando respuestas persuasivas y efectivas.">
       <span className="gauge-title">Prob. retención</span>
       <svg viewBox="0 0 160 90" className="gauge-svg">
         {/* Background arc */}

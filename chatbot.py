@@ -101,14 +101,16 @@ def cargar_system_prompt() -> str:
 @tool
 def buscar_poliza(numero_poliza: str) -> str:
     """Busca los datos de una póliza por su número.
-    Retorna nombre del cliente, ramo, fecha de alta, antigüedad, rentabilidad, CP, edad y siniestralidad.
+    Retorna nombre del cliente, ramo, fecha de alta, antigüedad, rentabilidad, CP, edad, siniestralidad,
+    canal mediador, reincidencia en retención y nivel de vinculación.
     Usar cuando el ejecutivo proporcione el número de póliza del cliente."""
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute("""
             SELECT numero_poliza, ramo, fecha_alta, rentabilidad,
-                   cliente, cp, edad, siniestralidad
+                   cliente, cp, edad, siniestralidad,
+                   canal_mediador, reincidencia, vinculacion
             FROM polizas
             WHERE numero_poliza = %s
         """, (numero_poliza.upper().strip(),))
@@ -120,7 +122,7 @@ def buscar_poliza(numero_poliza: str) -> str:
     if not row:
         return f"No se encontró ninguna póliza con el número '{numero_poliza}'."
 
-    numero, ramo, fecha_alta, rentabilidad, cliente, cp, edad, siniestralidad = row
+    numero, ramo, fecha_alta, rentabilidad, cliente, cp, edad, siniestralidad, canal_mediador, reincidencia, vinculacion = row
     from datetime import date
     antiguedad = (date.today() - fecha_alta).days // 365
 
@@ -134,7 +136,10 @@ def buscar_poliza(numero_poliza: str) -> str:
         f"- Rentabilidad: {rentabilidad}\n"
         f"- CP: {cp or 'No disponible'}\n"
         f"- Edad: {edad or 'No disponible'} años\n"
-        f"- Siniestralidad: {siniestralidad or 'No disponible'}"
+        f"- Siniestralidad: {siniestralidad or 'No disponible'}\n"
+        f"- Canal mediador: {canal_mediador or 'No disponible'}\n"
+        f"- Reincidencia en retención: {reincidencia or 0} vez(es)\n"
+        f"- Vinculación: {vinculacion or 'No disponible'}"
     )
 
 

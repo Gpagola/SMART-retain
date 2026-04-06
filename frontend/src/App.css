@@ -52,7 +52,7 @@
 }
 
 .resize-handle {
-  width: 12px;
+  width: 8px;
   background: transparent;
   cursor: col-resize;
   flex-shrink: 0;
@@ -62,22 +62,40 @@
   justify-content: center;
 }
 
-.resize-handle::after {
+/* Línea fina vertical */
+.resize-handle::before {
   content: '';
   position: absolute;
-  top: 35%;
+  top: 0;
+  bottom: 0;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 4px;
-  height: 32px;
+  width: 1px;
   background: var(--border);
-  border-radius: 2px;
   transition: background 0.15s;
 }
 
+/* Tres puntos centrados como gripper */
+.resize-handle::after {
+  content: '···';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-faint);
+  transition: color 0.15s;
+  z-index: 1;
+  background: var(--bg-app);
+  padding: 2px 0;
+}
+
+.resize-handle:hover::before {
+  background: var(--text-muted);
+}
+
 .resize-handle:hover::after {
-  background: var(--border-focus);
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 /* ── Center panel (ontologist mode) ── */
@@ -93,15 +111,15 @@
 .center-nav {
   display: flex;
   gap: 28px;
-  padding: 8px 32px 6px;
+  padding: 0 32px;
   align-items: flex-end;
-  background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   position: relative;
   z-index: 5;
+  min-height: 54px;
+  box-sizing: border-box;
 }
 
 .center-nav-item {
@@ -109,14 +127,16 @@
   background: transparent;
   color: var(--text-muted);
   font-family: "Alliance No.1", sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   cursor: pointer;
   transition: color 0.15s;
-  padding: 4px 0 6px;
+  padding: 0 0 8px;
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .center-nav-item:hover { color: var(--text); }
@@ -143,8 +163,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 12px;
+  height: 24px;
+  padding: 0 10px;
+  margin-bottom: 8px;
   border-radius: 0;
   border: 1px solid var(--text);
   background: transparent;
@@ -163,8 +184,9 @@
 /* ── Theme switch (in nav) ── */
 .nav-theme-switch {
   position: relative;
-  width: 48px;
-  height: 24px;
+  width: 44px;
+  height: 22px;
+  margin-bottom: 8px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-input);
@@ -177,8 +199,8 @@
 .nav-switch-knob {
   position: absolute;
   top: 2px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--text);
   transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -186,7 +208,7 @@
 }
 
 .nav-theme-switch.dark  .nav-switch-knob { left: 2px; }
-.nav-theme-switch.light .nav-switch-knob { left: 26px; }
+.nav-theme-switch.light .nav-switch-knob { left: 24px; }
 
 .nav-switch-moon,
 .nav-switch-sun {
@@ -209,7 +231,7 @@
 
 /* ── Hero title ── */
 .center-hero {
-  padding: 28px 32px 20px;
+  padding: 16px 32px 12px;
   flex-shrink: 0;
   background: var(--bg-chat);
   position: relative;

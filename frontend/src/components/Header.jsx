@@ -7,6 +7,9 @@ export default function Header({ loading, adminWidth }) {
       <div className="header-left" style={adminWidth ? { width: adminWidth } : {}}>
         <span className="header-title">Smart Retain</span>
       </div>
+      <div className="header-center">
+        <span className="header-subtitle">Desarrollado por Braintrust CS firma miembro de Andersen Consulting</span>
+      </div>
       <div className="header-right">
         <img
           src={`${import.meta.env.BASE_URL}logos/logo.jpg`}

@@ -18,6 +18,14 @@ const TAB_ORDER = [
   "autopilot-cliente", "autopilot-evaluador",
 ]
 
+const TOOLTIPS = {
+  "system-prompt":             "Prompt del sistema: define la personalidad, tono y comportamiento general del asistente SR. Es la base sobre la que se construyen todas las respuestas de retención. Edítalo para ajustar cómo se presenta el asistente, su nivel de formalidad y su enfoque estratégico.",
+  "ontologia-reglas":          "Reglas de retención: contiene las estrategias, técnicas y procedimientos que el asistente debe seguir para retener clientes según el motivo de baja, ramo y perfil. Aquí se definen los argumentos clave, las ofertas posibles y el flujo de la conversación.",
+  "ontologia-diferenciadores": "Diferenciadores competitivos: describe las ventajas exclusivas de la aseguradora frente a la competencia. El asistente usa estos argumentos cuando el cliente menciona otras opciones o cuestiona el valor del servicio.",
+  "autopilot-cliente":         "Prompt del cliente simulado: define cómo se comporta el cliente IA en las pruebas automáticas (auto-test). Controla su nivel de resistencia, realismo y variedad de objeciones para estresar las ontologías de forma efectiva.",
+  "autopilot-evaluador":       "Prompt del evaluador: define los criterios con los que el agente evaluador analiza cada conversación. Determina cómo se puntúan las tres ontologías (prompt, reglas, diferenciadores) y qué tipo de recomendaciones genera para optimizarlas.",
+}
+
 const TAB_COLORS = {
   "system-prompt":             "tab-system",
   "ontologia-reglas":          "tab-reglas",
@@ -241,6 +249,7 @@ export default function AdminPanel({ onSaved, width }) {
                 key={o.nombre}
                 className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
                 onClick={() => handleSelect(o.nombre)}
+                title={TOOLTIPS[o.nombre] || `Ver y editar ${LABELS[o.nombre] || o.nombre}`}
               >
                 {LABELS[o.nombre] || o.nombre}
               </button>
@@ -255,6 +264,7 @@ export default function AdminPanel({ onSaved, width }) {
                 key={o.nombre}
                 className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
                 onClick={() => handleSelect(o.nombre)}
+                title={TOOLTIPS[o.nombre] || `Ver y editar ${LABELS[o.nombre] || o.nombre}`}
               >
                 {LABELS[o.nombre] || o.nombre}
               </button>
@@ -300,24 +310,24 @@ export default function AdminPanel({ onSaved, width }) {
               {matches.length ? `${matchIndex + 1}/${matches.length}` : "0 resultados"}
             </span>
           )}
-          <button className="search-nav" onClick={() => navigate(-1)} disabled={!matches.length} title="Anterior">
+          <button className="search-nav" onClick={() => navigate(-1)} disabled={!matches.length} title="Ir a la coincidencia anterior en el contenido de la ontología">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
           </button>
-          <button className="search-nav" onClick={() => navigate(1)} disabled={!matches.length} title="Siguiente">
+          <button className="search-nav" onClick={() => navigate(1)} disabled={!matches.length} title="Ir a la siguiente coincidencia en el contenido de la ontología">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
       )}
 
       <div className="admin-footer">
-        <button className="save-btn" onClick={handleSave} disabled={saving || !dirty}>
+        <button className="save-btn" onClick={handleSave} disabled={saving || !dirty} title="Guardar los cambios realizados en esta ontología. Se crea una nueva versión activa que el asistente SR usará inmediatamente en las próximas conversaciones y pruebas.">
           {saving ? "Guardando..." : "Guardar"}
         </button>
         {dirty && <span className="unsaved">Sin guardar</span>}
         <button
           className={`search-toggle ${searchOpen ? "active" : ""}`}
           onClick={toggleSearch}
-          title="Buscar en el contenido"
+          title="Buscar texto dentro del contenido de la ontología. Útil para localizar reglas específicas, argumentos o secciones que necesitan ajuste tras una evaluación."
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -326,7 +336,7 @@ export default function AdminPanel({ onSaved, width }) {
         <button
           className="expand-toggle"
           onClick={() => setExpanded(true)}
-          title="Ampliar editor"
+          title="Ampliar el editor a pantalla completa para editar la ontología con más espacio. Especialmente útil para ontologías extensas como las reglas de retención."
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
@@ -353,6 +363,7 @@ export default function AdminPanel({ onSaved, width }) {
                             key={o.nombre}
                             className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
                             onClick={() => handleSelect(o.nombre)}
+                            title={TOOLTIPS[o.nombre] || `Ver y editar ${LABELS[o.nombre] || o.nombre}`}
                           >
                             {LABELS[o.nombre] || o.nombre}
                           </button>
@@ -367,6 +378,7 @@ export default function AdminPanel({ onSaved, width }) {
                             key={o.nombre}
                             className={`admin-pill ${TAB_COLORS[o.nombre] || ""} ${selected === o.nombre ? "active" : ""}`}
                             onClick={() => handleSelect(o.nombre)}
+                            title={TOOLTIPS[o.nombre] || `Ver y editar ${LABELS[o.nombre] || o.nombre}`}
                           >
                             {LABELS[o.nombre] || o.nombre}
                           </button>
@@ -374,7 +386,7 @@ export default function AdminPanel({ onSaved, width }) {
                       </div>
                     </div>
                   </div>
-                  <button className="expand-close" onClick={() => setExpanded(false)} title="Cerrar">
+                  <button className="expand-close" onClick={() => setExpanded(false)} title="Cerrar la vista ampliada y volver al panel lateral con las pestañas de ontologías.">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
@@ -414,23 +426,23 @@ export default function AdminPanel({ onSaved, width }) {
                         {matches.length ? `${matchIndex + 1}/${matches.length}` : "0 resultados"}
                       </span>
                     )}
-                    <button className="search-nav" onClick={() => navigate(-1)} disabled={!matches.length} title="Anterior">
+                    <button className="search-nav" onClick={() => navigate(-1)} disabled={!matches.length} title="Ir a la coincidencia anterior en el contenido de la ontología">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
                     </button>
-                    <button className="search-nav" onClick={() => navigate(1)} disabled={!matches.length} title="Siguiente">
+                    <button className="search-nav" onClick={() => navigate(1)} disabled={!matches.length} title="Ir a la siguiente coincidencia en el contenido de la ontología">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
                   </div>
                 )}
                 <div className="admin-expand-footer">
-                  <button className="save-btn" onClick={handleSave} disabled={saving || !dirty}>
+                  <button className="save-btn" onClick={handleSave} disabled={saving || !dirty} title="Guardar los cambios realizados en esta ontología. Se crea una nueva versión activa que el asistente SR usará inmediatamente en las próximas conversaciones y pruebas.">
                     {saving ? "Guardando..." : "Guardar"}
                   </button>
                   {dirty && <span className="unsaved">Sin guardar</span>}
                   <button
                     className={`search-toggle ${searchOpen ? "active" : ""}`}
                     onClick={toggleSearch}
-                    title="Buscar en el contenido"
+                    title="Buscar texto dentro del contenido de la ontología. Útil para localizar reglas específicas, argumentos o secciones que necesitan ajuste tras una evaluación."
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -439,7 +451,7 @@ export default function AdminPanel({ onSaved, width }) {
                   <button
                     className="expand-toggle"
                     onClick={() => setExpanded(false)}
-                    title="Reducir editor"
+                    title="Reducir el editor al tamaño normal del panel lateral."
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>

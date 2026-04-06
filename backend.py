@@ -193,15 +193,19 @@ def _parse_poliza_result(text: str) -> dict | None:
         m = re.search(pattern, text, re.IGNORECASE)
         return m.group(1).strip() if m else None
     edad_m = re.search(r"-\s*Edad[:\s]+(\d+)", text, re.IGNORECASE)
+    reincidencia_m = re.search(r"Reincidencia[^:]*[:\s]+(\d+)", text, re.IGNORECASE)
     return {
-        "numero":        field(r"Número[:\s]+([^\n]+)"),
-        "cliente":       field(r"Cliente[:\s]+([^\n]+)"),
-        "ramo":          field(r"Ramo[:\s]+([^\n]+)"),
-        "antiguedad":    field(r"Antig[uü]edad[:\s]+([^\n]+)"),
-        "rentabilidad":  field(r"Rentabilidad[:\s]+([^\n]+)"),
-        "cp":            field(r"\bCP[:\s]+([^\n]+)"),
-        "edad":          edad_m.group(1) if edad_m else None,
+        "numero":         field(r"Número[:\s]+([^\n]+)"),
+        "cliente":        field(r"Cliente[:\s]+([^\n]+)"),
+        "ramo":           field(r"Ramo[:\s]+([^\n]+)"),
+        "antiguedad":     field(r"Antig[uü]edad[:\s]+([^\n]+)"),
+        "rentabilidad":   field(r"Rentabilidad[:\s]+([^\n]+)"),
+        "cp":             field(r"\bCP[:\s]+([^\n]+)"),
+        "edad":           edad_m.group(1) if edad_m else None,
         "siniestralidad": field(r"Siniestralidad[:\s]+([^\n]+)"),
+        "canal_mediador": field(r"Canal mediador[:\s]+([^\n]+)"),
+        "reincidencia":   int(reincidencia_m.group(1)) if reincidencia_m else 0,
+        "vinculacion":    field(r"Vinculación[:\s]+([^\n]+)"),
     }
 
 
@@ -433,10 +437,15 @@ def listar_ontologias():
     try:
         cur = conn.cursor()
         cur.execute("""
-            SELECT nombre, version, contenido
-            FROM ontologias
-            WHERE activo = TRUE
-            ORDER BY id
+            SELECT o.nombre, o.version, o.contenido
+            FROM ontologias o
+            INNER JOIN (
+                SELECT nombre, MAX(id) AS max_id
+                FROM ontologias
+                WHERE activo = TRUE
+                GROUP BY nombre
+            ) latest ON o.id = latest.max_id
+            ORDER BY o.id
         """)
         rows = cur.fetchall()
         cur.close()

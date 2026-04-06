@@ -7,6 +7,7 @@
   background: #ffffff;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
+  position: relative;
 }
 
 .header-right {
@@ -28,9 +29,22 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 12px;
   flex-shrink: 0;
   min-width: 200px;
+}
+
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.header-subtitle {
+  font-size: 10px;
+  font-weight: 400;
+  color: #999;
+  letter-spacing: 0.02em;
+  font-family: "Alliance No.1", sans-serif;
 }
 
 .header-logo {

@@ -87,25 +87,28 @@ export default function App() {
               <button
                 className={`center-nav-item ${activeTab === "lab" ? "active" : ""}`}
                 onClick={() => { setActiveTab("lab"); handleReset() }}
+                title="Auto-test: ejecuta una conversación completa simulada entre un cliente IA y el asistente de retención, guiada por las ontologías activas (prompt, reglas y diferenciadores). Permite evaluar automáticamente la calidad de las respuestas y detectar oportunidades de mejora en las ontologías sin intervención humana."
               >
                 Auto-test
               </button>
               <button
                 className={`center-nav-item ${activeTab === "test" ? "active" : ""}`}
                 onClick={() => { setActiveTab("test"); handleReset() }}
+                title="Manual-test: tú interpretas al cliente mientras el asistente SR responde según las ontologías activas. Al finalizar, un evaluador IA analiza la conversación en tres niveles (prompt, reglas, diferenciadores), puntúa cada ontología y propone mejoras concretas que puedes aplicar con un clic."
               >
                 Manual-test
               </button>
               <button
                 className={`center-nav-item ${activeTab === "user" ? "active" : ""}`}
                 onClick={() => { setActiveTab("user"); handleReset() }}
+                title="User-test: conversación libre con el asistente de retención tal como la tendría un ejecutivo real. Permite probar las ontologías en un escenario realista, con radar de motivos, medidor de retención y sentimiento en tiempo real. Al finalizar se puede evaluar la calidad de las ontologías."
               >
                 User-test
               </button>
 
               <div className="center-nav-spacer" />
 
-              <button className="nav-new-case" onClick={handleReset} title="Nuevo caso">
+              <button className="nav-new-case" onClick={handleReset} title="Reiniciar la sesión actual: limpia la conversación, los indicadores (radar, retención, sentimiento) y los datos de póliza para comenzar un nuevo caso de prueba desde cero.">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"/>
                   <line x1="5" y1="12" x2="19" y2="12"/>
@@ -116,7 +119,7 @@ export default function App() {
               <button
                 className={`nav-theme-switch ${theme === "dark" ? "dark" : "light"}`}
                 onClick={toggleTheme}
-                title={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                title={theme === "dark" ? "Cambiar a modo claro: interfaz con fondo blanco para entornos con mucha luz" : "Cambiar a modo oscuro: interfaz con fondo oscuro que reduce la fatiga visual en sesiones largas de prueba"}
               >
                 <span className="nav-switch-knob" />
                 <span className="nav-switch-moon">
@@ -139,11 +142,13 @@ export default function App() {
                 </span>
               </button>
             </div>
-            <div className="center-hero">
-              <h1 className="center-hero-title">
-                {TAB_TITLES[activeTab]}
-              </h1>
-            </div>
+            {activeTab !== "user" && (
+              <div className="center-hero">
+                <h1 className="center-hero-title">
+                  {TAB_TITLES[activeTab]}
+                </h1>
+              </div>
+            )}
             <div className="center-content">
               {activeTab === "lab" && (
                 <AutopilotPanel key={`ap-${resetKey}`} onLoadingChange={setChatLoading} />

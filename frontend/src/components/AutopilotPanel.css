@@ -29,8 +29,8 @@
 
 .ap-config-row {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .ap-field-action {
@@ -38,55 +38,63 @@
   min-width: auto !important;
 }
 
-.ap-field {
+.ap-field-inline {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   flex: 1;
-  min-width: 180px;
+  min-width: 0;
 }
 
-.ap-field label {
-  font-size: 11px;
+.ap-field-inline label {
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.ap-field select {
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 6px;
+.ap-field-inline select {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 2px;
   border: 1px solid var(--border);
   background: var(--bg-input);
   color: var(--text);
-  font-size: 13px;
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
+  flex: 1;
+  min-width: 0;
 }
 
-.ap-field select:focus { border-color: var(--border-focus); }
-.ap-field select:disabled { opacity: 0.5; cursor: default; }
+.ap-field-inline select:focus { border-color: var(--border-focus); }
+.ap-field-inline select:disabled { opacity: 0.5; cursor: default; }
 
-.ap-field input[list] {
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 6px;
+.ap-field-inline input[list] {
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 2px;
   border: 1px solid var(--border);
   background: var(--bg-input);
   color: var(--text);
-  font-size: 13px;
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 12px;
   outline: none;
   transition: border-color 0.15s;
   font-family: inherit;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
 }
-.ap-field input[list]:focus { border-color: var(--border-focus); }
-.ap-field input[list]:disabled { opacity: 0.5; cursor: default; }
-.ap-field input[list]::placeholder { color: var(--text-muted); }
+.ap-field-inline input[list]:focus { border-color: var(--border-focus); }
+.ap-field-inline input[list]:disabled { opacity: 0.5; cursor: default; }
+.ap-field-inline input[list]::placeholder { color: var(--text-muted); }
 
 /* ── Countdown Waze ── */
 .ap-countdown {
@@ -133,17 +141,20 @@
 /* ── Actions ── */
 
 .ap-btn-launch {
-  height: 34px;
+  height: 30px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: 2px;
   border: none;
-  background: linear-gradient(135deg, #4158d0, #c850c0);
+  background: linear-gradient(135deg, #7c3aed, #3b82f6, #06b6d4);
   color: #fff;
-  font-size: 13px;
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
-  box-shadow: 0 2px 8px rgba(65, 88, 208, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 .ap-btn-launch:hover { opacity: 0.88; }
 
@@ -175,16 +186,20 @@
 .ap-btn-skip:hover { background: var(--border); }
 
 .ap-btn-stop {
-  height: 34px;
+  height: 30px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: 2px;
   border: 1px solid #ef4444;
   background: #ef4444;
   color: #fff;
-  font-size: 13px;
+  font-family: "Alliance No.1", sans-serif;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 .ap-btn-stop:hover { opacity: 0.85; }
 
@@ -283,13 +298,13 @@
   letter-spacing: 0.08em;
 }
 .ap-role-label.exec   { color: var(--text-muted); }
-.ap-role-label.client { color: #7c3aed; }
-.ap-role-label.agent  { color: #1a4f9c; }
-.ap-role-label.error  { color: #ef4444; }
+.ap-role-label.client { color: var(--text); }
+.ap-role-label.agent  { color: var(--text); }
+.ap-role-label.error  { color: var(--text-muted); }
 
 .ap-turn-body {
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 2px;
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--text);
@@ -308,13 +323,13 @@
 .ap-turn-cliente .ap-turn-body {
   background: #7c3aed;
   color: #fff;
-  border-radius: 16px 16px 4px 16px;
+  border-radius: 2px;
 }
 
 .ap-turn-asistente .ap-turn-body {
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 4px 16px 16px 16px;
+  border-radius: 2px;
 }
 
 .ap-turn-error .ap-turn-body {

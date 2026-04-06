@@ -24,6 +24,7 @@ function ApplyButton({ nivel, recomendacion, status, onApply }) {
       className="ec-btn-apply"
       disabled={status === "loading"}
       onClick={() => onApply(nivel, recomendacion)}
+      title="Aplicar automáticamente esta recomendación: el sistema reescribirá la ontología correspondiente (prompt, reglas o diferenciadores) incorporando la mejora sugerida por el evaluador. Se crea una nueva versión, preservando la anterior por si necesitas revertir."
     >
       {status === "loading" ? "Aplicando..." : "Aplicar cambio"}
     </button>
@@ -161,8 +162,43 @@ export function EvaluationModal({ evaluation, evaluating, autoApply = false, onC
         <div className="ec-dialog-body">
           {evaluating && !evaluation ? (
             <div className="ec-loading">
-              <span className="ec-loading-dot" />
-              <span>Evaluando las respuestas para poder optimizar...</span>
+              <div className="ec-iso-stack">
+                {/* Capa 3 — Diferenciadores (arriba) */}
+                <div className="ec-iso-layer ec-layer-3">
+                  <div className="ec-iso-plate">
+                    <div className="ec-iso-nodes">
+                      <div className="ec-node sm" /><div className="ec-node lg" /><div className="ec-node sm" />
+                      <div className="ec-node md" /><div className="ec-node sm" /><div className="ec-node md" />
+                    </div>
+                  </div>
+                  <div className="ec-iso-scan" />
+                </div>
+                {/* Capa 2 — Reglas (medio) */}
+                <div className="ec-iso-layer ec-layer-2">
+                  <div className="ec-iso-plate">
+                    <div className="ec-iso-grid">
+                      {Array.from({length: 12}).map((_, i) => <div key={i} className="ec-grid-cell" />)}
+                    </div>
+                  </div>
+                  <div className="ec-iso-scan" />
+                </div>
+                {/* Capa 1 — Prompt (abajo) */}
+                <div className="ec-iso-layer ec-layer-1">
+                  <div className="ec-iso-plate">
+                    <div className="ec-iso-lines">
+                      <div className="ec-line-row" style={{width:'75%'}} />
+                      <div className="ec-line-row" style={{width:'90%'}} />
+                      <div className="ec-line-row" style={{width:'55%'}} />
+                      <div className="ec-line-row" style={{width:'80%'}} />
+                    </div>
+                  </div>
+                  <div className="ec-iso-scan" />
+                </div>
+              </div>
+              <div className="ec-loading-labels">
+                <span className="ec-loading-text">Analizando ontologías</span>
+                <span className="ec-loading-sub">Prompt · Reglas · Diferenciadores</span>
+              </div>
             </div>
           ) : evaluation ? (
             <EvaluationCard evaluation={evaluation} autoApply={autoApply} onApplyingChange={setApplying} />
@@ -170,7 +206,7 @@ export function EvaluationModal({ evaluation, evaluating, autoApply = false, onC
         </div>
 
         <div className="ec-dialog-footer">
-          <button className="ec-btn-ok" onClick={onClose} disabled={(evaluating && !evaluation) || applying}>
+          <button className="ec-btn-ok" onClick={onClose} disabled={(evaluating && !evaluation) || applying} title="Cerrar la ventana de evaluación. Si se aplicaron cambios a las ontologías, ya estarán activos para la próxima conversación. Si no aplicaste ninguna recomendación, las ontologías permanecen sin cambios.">
             {applying ? "Aplicando cambios..." : "Aceptar"}
           </button>
         </div>

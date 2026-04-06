@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS polizas (
     cliente       VARCHAR(100),
     cp            VARCHAR(10),
     edad          INT,
-    siniestralidad VARCHAR(10)
+    siniestralidad VARCHAR(10),
+    canal_mediador VARCHAR(50),
+    reincidencia   INT DEFAULT 0,
+    vinculacion    VARCHAR(20)
 );
 """
 
@@ -45,14 +48,69 @@ CREATE TABLE IF NOT EXISTS ontologias (
 
 # ── Datos mock: pólizas ──────────────────────────────────────────────────────
 
-POLIZAS_MOCK = [
-    #  numero       ramo     fecha_alta    rentab  cliente                    cp      edad  siniestralidad
-    ("POL-001", "Vida",  "2019-03-15", "alta",  "María García López",      "11001",  58,   "baja"),
-    ("POL-002", "Auto",  "2022-07-01", "media", "Carlos Martínez Ruiz",    "05001",  35,   "media"),
-    ("POL-003", "Hogar", "2021-11-20", "baja",  "Ana Rodríguez Pérez",     "76001",  42,   "alta"),
-    ("POL-004", "Salud", "2020-05-10", "alta",  "Roberto Jiménez Torres",  "08001",  67,   "media"),
-    ("POL-005", "Auto",  "2023-01-08", "media", "Luisa Fernanda Gómez",    "11001",  28,   "baja"),
+import random
+from datetime import date, timedelta
+
+_RAMOS = ["Decesos", "Vida", "Hogar", "Salud", "Accidentes", "Auto"]
+_RENTAB = ["alta", "media", "baja"]
+_SINIEST = ["baja", "media", "alta"]
+_CANALES = ["Directo", "Broker", "Agente", "Comparador"]
+_VINCUL = ["Plata", "Oro", "Platino"]
+_CPS = ["08001", "28001", "41001", "46001", "11001", "76001", "05001", "15001", "48001", "29001",
+        "33001", "03001", "35001", "38001", "50001", "30001", "07001", "47001", "18001", "37001"]
+
+_NOMBRES = [
+    "María", "Carlos", "Ana", "Roberto", "Luisa", "Pedro", "Carmen", "Javier",
+    "Isabel", "Fernando", "Elena", "Miguel", "Laura", "Antonio", "Sofía",
+    "Francisco", "Marta", "José", "Patricia", "Manuel", "Raquel", "Alberto",
+    "Cristina", "Daniel", "Beatriz", "Alejandro", "Lucía", "David", "Paula",
+    "Jorge", "Alicia", "Sergio", "Rosa", "Andrés", "Pilar", "Diego",
+    "Teresa", "Óscar", "Victoria", "Adrián", "Natalia", "Rubén", "Sara",
+    "Enrique", "Irene", "Guillermo", "Claudia", "Marcos", "Eva", "Hugo",
 ]
+
+_APELLIDOS1 = [
+    "García", "Martínez", "López", "Rodríguez", "Jiménez", "Fernández", "Gómez",
+    "Sánchez", "Pérez", "Díaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Torres",
+    "Navarro", "Domínguez", "Vázquez", "Ramos", "Gil", "Serrano", "Blanco",
+    "Molina", "Morales", "Suárez", "Ortega",
+]
+
+_APELLIDOS2 = [
+    "Ruiz", "Hernández", "Castro", "Vargas", "Medina", "Herrera", "Delgado",
+    "Peña", "Cruz", "Flores", "Reyes", "Aguilar", "León", "Campos", "Vega",
+    "Prieto", "Fuentes", "Cabrera", "Calvo", "Méndez",
+]
+
+random.seed(42)  # reproducibilidad
+
+def _gen_polizas(n=50):
+    polizas = []
+    used_names = set()
+    for i in range(1, n + 1):
+        numero = f"POL-{i:03d}"
+        ramo = random.choice(_RAMOS)
+        # Fecha alta entre 2016 y 2024
+        start = date(2016, 1, 1)
+        delta = (date(2024, 12, 31) - start).days
+        fecha_alta = start + timedelta(days=random.randint(0, delta))
+        rentab = random.choice(_RENTAB)
+        # Nombre único
+        while True:
+            nombre = f"{random.choice(_NOMBRES)} {random.choice(_APELLIDOS1)} {random.choice(_APELLIDOS2)}"
+            if nombre not in used_names:
+                used_names.add(nombre)
+                break
+        cp = random.choice(_CPS)
+        edad = random.randint(22, 78)
+        siniest = random.choice(_SINIEST)
+        canal = random.choice(_CANALES)
+        reincidencia = random.choices([0, 1, 2, 3], weights=[60, 25, 10, 5])[0]
+        vinculacion = random.choice(_VINCUL)
+        polizas.append((numero, ramo, fecha_alta.isoformat(), rentab, nombre, cp, edad, siniest, canal, reincidencia, vinculacion))
+    return polizas
+
+POLIZAS_MOCK = _gen_polizas(50)
 
 # ── Datos mock: ontología de reglas ──────────────────────────────────────────
 
@@ -333,10 +391,13 @@ def setup():
 
     print("Añadiendo columnas nuevas si no existen...")
     for col_def in [
-        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cliente       VARCHAR(100)",
-        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cp            VARCHAR(10)",
-        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS edad          INT",
-        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS siniestralidad VARCHAR(10)",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cliente         VARCHAR(100)",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cp              VARCHAR(10)",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS edad            INT",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS siniestralidad  VARCHAR(10)",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS canal_mediador  VARCHAR(50)",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS reincidencia    INT DEFAULT 0",
+        "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS vinculacion     VARCHAR(20)",
     ]:
         cur.execute(col_def)
 
@@ -344,8 +405,9 @@ def setup():
     for pol in POLIZAS_MOCK:
         cur.execute("""
             INSERT INTO polizas (numero_poliza, ramo, fecha_alta, rentabilidad,
-                                 cliente, cp, edad, siniestralidad)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                 cliente, cp, edad, siniestralidad,
+                                 canal_mediador, reincidencia, vinculacion)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 ramo           = VALUES(ramo),
                 fecha_alta     = VALUES(fecha_alta),
@@ -353,7 +415,10 @@ def setup():
                 cliente        = VALUES(cliente),
                 cp             = VALUES(cp),
                 edad           = VALUES(edad),
-                siniestralidad = VALUES(siniestralidad)
+                siniestralidad = VALUES(siniestralidad),
+                canal_mediador = VALUES(canal_mediador),
+                reincidencia   = VALUES(reincidencia),
+                vinculacion    = VALUES(vinculacion)
         """, pol)
 
     print("Insertando/actualizando ontologia-reglas...")

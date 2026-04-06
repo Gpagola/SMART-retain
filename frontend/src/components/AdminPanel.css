@@ -15,11 +15,13 @@
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  padding: 8px 8px 6px;
+  padding: 6px 8px 6px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   gap: 10px;
+  min-height: 54px;
+  box-sizing: border-box;
 }
 
 .admin-tab-col {

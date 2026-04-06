@@ -13,13 +13,25 @@ client = OpenAI()
 # ── Datos de referencia ───────────────────────────────────────────────────────
 
 MOTIVOS = [
-    "precio muy alto",
-    "me cambio a la competencia (Sura)",
-    "me cambio a la competencia (Reale)",
-    "me cambio a la competencia (Mutua)",
-    "no uso el seguro, no lo necesito",
-    "mala experiencia con un siniestro",
-    "dificultades económicas, no puedo pagar",
+    # Precio
+    "La prima me parece muy cara, he visto opciones más baratas",
+    "Me subieron el precio en la renovación y no estoy de acuerdo",
+    # Competencia (sin nombrar competidores específicos)
+    "Tengo una oferta de otra aseguradora que me conviene más",
+    "He comparado y otra compañía me ofrece mejor relación calidad-precio",
+    # Uso / necesidad
+    "Nunca uso el seguro, no le veo utilidad",
+    "Ya no necesito este tipo de cobertura",
+    # Mala experiencia
+    "Tuve un siniestro y el servicio fue pésimo",
+    "La atención al cliente fue muy mala, estoy harto",
+    "Me rechazaron un siniestro y no estoy conforme",
+    # Situación económica
+    "Estoy pasando dificultades económicas y no puedo pagar",
+    "Necesito recortar gastos y el seguro es prescindible",
+    # Vinculación / confianza
+    "No confío en la aseguradora, quiero cancelar",
+    "Llevo poco tiempo y no he visto ningún beneficio",
 ]
 
 PERSONALIDADES = [
@@ -64,12 +76,22 @@ def get_all_polizas() -> list[dict]:
     conn = get_conn()
     try:
         cur = conn.cursor()
-        cur.execute("SELECT numero_poliza, ramo, rentabilidad, cliente FROM polizas ORDER BY numero_poliza")
+        cur.execute("""
+            SELECT numero_poliza, ramo, rentabilidad, cliente,
+                   canal_mediador, reincidencia, vinculacion
+            FROM polizas ORDER BY numero_poliza
+        """)
         rows = cur.fetchall()
         cur.close()
     finally:
         conn.close()
-    return [{"numero_poliza": r[0], "ramo": r[1], "rentabilidad": r[2], "cliente": r[3]} for r in rows]
+    return [
+        {
+            "numero_poliza": r[0], "ramo": r[1], "rentabilidad": r[2], "cliente": r[3],
+            "canal_mediador": r[4], "reincidencia": r[5], "vinculacion": r[6],
+        }
+        for r in rows
+    ]
 
 
 # ── Generador de caso aleatorio ───────────────────────────────────────────────

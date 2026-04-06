@@ -28,6 +28,8 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
   const [riskProfile, setRiskProfile]     = useState(null)
   const [retention, setRetention]         = useState(null)
   const [sentimentPts, setSentimentPts]   = useState([])
+  const [showPolizaPicker, setShowPolizaPicker] = useState(false)
+  const [polizaList, setPolizaList]       = useState([])
   const bottomRef    = useRef(null)
   const textareaRef  = useRef(null)
   const abortRef     = useRef(null)
@@ -123,6 +125,15 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
         role: "assistant",
         content: "¡Hola! Soy el asistente de retención. Indícame el número de póliza del cliente para comenzar."
       }])
+      // Cargar pólizas y mostrar picker
+      try {
+        const op = await fetch(`${API}/autopilot/opciones`)
+        const data = await op.json()
+        if (data.polizas?.length) {
+          setPolizaList(data.polizas)
+          setShowPolizaPicker(true)
+        }
+      } catch {}
     }
     init()
   }, [])
@@ -250,17 +261,16 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
   }
 
   function formatAssistantMsg(text) {
-    // Convertir texto entre comillas largas (lo que el ejecutivo debe leer) en blockquote
-    return text.replace(/"([^"]{40,})"/g, (_, quoted) => {
+    // 1. Texto entre comillas (españolas o rectas) largas → blockquote
+    let result = text.replace(/[""\u00ab]([^""\u00bb]{30,})[""\u00bb]/g, (_, quoted) => {
       return '\n\n> 💬 *' + quoted.trim() + '*\n\n'
     })
+    return result
   }
 
   return (
-    <div className="chat-panel">
-      <div className="chat-main">
-
-      {/* Barra de contexto — siempre visible, se llena al cargar póliza */}
+    <div className="chat-panel-wrap">
+      {/* Barra de contexto — siempre visible, ancho completo */}
       <div className="session-bar">
         {poliza ? (<>
           <span className="session-item">
@@ -314,11 +324,36 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
               </span>
             </span>
           </>)}
+          {poliza.canal_mediador && (<>
+            <span className="session-sep">·</span>
+            <span className="session-item">
+              <span className="session-label">Canal</span>
+              <span className="session-value">{poliza.canal_mediador}</span>
+            </span>
+          </>)}
+          {poliza.reincidencia > 0 && (<>
+            <span className="session-sep">·</span>
+            <span className="session-item">
+              <span className="session-label">Reincidencia</span>
+              <span className="session-value">{poliza.reincidencia}×</span>
+            </span>
+          </>)}
+          {poliza.vinculacion && (<>
+            <span className="session-sep">·</span>
+            <span className="session-item">
+              <span className="session-label">Vinculación</span>
+              <span className={`session-badge vinculacion-${poliza.vinculacion?.toLowerCase()}`}>
+                {poliza.vinculacion}
+              </span>
+            </span>
+          </>)}
         </>) : (
           <span className="session-empty">Sin póliza cargada</span>
         )}
       </div>
 
+      <div className="chat-panel">
+      <div className="chat-main">
       <div className="messages">
         {messages.map((msg, i) => (
           <div key={i} className={`message-row ${msg.role}`}>
@@ -342,6 +377,48 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
         )}
         <div ref={bottomRef} />
       </div>
+
+      {/* ── Popup selector de póliza ── */}
+      {showPolizaPicker && (
+        <div className="poliza-picker-overlay" onClick={() => setShowPolizaPicker(false)}>
+          <div className="poliza-picker" onClick={e => e.stopPropagation()}>
+            <div className="poliza-picker-header">
+              <span className="poliza-picker-title">Seleccionar póliza</span>
+              <button className="poliza-picker-close" onClick={() => setShowPolizaPicker(false)} title="Cerrar el selector de pólizas. También puedes escribir el número directamente en el chat si lo conoces.">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div className="poliza-picker-table-wrap">
+              <table className="poliza-picker-table">
+                <thead>
+                  <tr>
+                    <th>Póliza</th>
+                    <th>Cliente</th>
+                    <th>Ramo</th>
+                    <th>Rentabilidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {polizaList.map(p => (
+                    <tr key={p.numero_poliza} onClick={() => {
+                      setInput(p.numero_poliza)
+                      setShowPolizaPicker(false)
+                      textareaRef.current?.focus()
+                    }}>
+                      <td className="pp-numero">{p.numero_poliza}</td>
+                      <td>{p.cliente || "—"}</td>
+                      <td>{p.ramo}</td>
+                      <td><span className={`pp-badge rent-${p.rentabilidad?.toLowerCase()}`}>{p.rentabilidad}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal de evaluación (solo en modo ontologista) ── */}
       {showEval && (evaluating || evaluation) && (
@@ -376,7 +453,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
             </svg>
             <span className="file-name">{attachedFile.name}</span>
-            <button className="file-remove" onClick={removeAttachment} title="Quitar archivo">
+            <button className="file-remove" onClick={removeAttachment} title="Quitar el archivo adjunto antes de enviarlo. El asistente SR puede analizar documentos PDF e imágenes para enriquecer su respuesta con datos concretos del cliente.">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
@@ -396,7 +473,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
               className="attach-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={!sessionId}
-              title="Adjuntar PDF o imagen"
+              title="Adjuntar un archivo PDF o imagen a tu mensaje. El asistente SR puede leer documentos del cliente (pólizas, cartas, recibos) para personalizar sus argumentos de retención según las ontologías activas."
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
@@ -413,7 +490,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
               disabled={!sessionId || ended}
             />
             {!ended && (loading ? (
-              <button className="stop-btn" onClick={handleStop} title="Detener respuesta">
+              <button className="stop-btn" onClick={handleStop} title="Detener la respuesta del asistente SR en curso. Útil si detectas que la ontología está generando una respuesta incorrecta o demasiado larga y quieres redirigir la conversación.">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="3" y="3" width="18" height="18" rx="2"/>
                 </svg>
@@ -423,6 +500,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
                 className="send-btn"
                 onClick={sendMessage}
                 disabled={(!input.trim() && !attachedFile) || !sessionId}
+                title="Enviar tu mensaje al asistente SR (también puedes pulsar Enter). El asistente responderá aplicando las ontologías activas: el system prompt define su personalidad, las reglas de retención guían su estrategia y los diferenciadores le aportan argumentos competitivos."
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -433,7 +511,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
           {showEval && (
             <button
               className="eval-btn"
-              title="Finalizar conversación"
+              title="Finalizar la conversación y lanzar la evaluación automática. Un agente evaluador analizará toda la conversación en tres niveles — system prompt, reglas de retención y diferenciadores — puntuando cada ontología del 1 al 10 y proponiendo mejoras concretas que puedes aplicar con un clic."
               disabled={messages.length < 2 || loading || evaluating || ended}
               onClick={handleFin}
             >
@@ -469,6 +547,7 @@ export default function ChatPanel({ onLoadingChange, onNewCase, showEval = false
           </div>
         </div>
       )}
+    </div>{/* close chat-panel */}
     </div>
   )
 }
