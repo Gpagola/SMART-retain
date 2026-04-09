@@ -42,9 +42,25 @@ CREATE TABLE IF NOT EXISTS ontologias (
     version   VARCHAR(10)  NOT NULL DEFAULT '1.0',
     contenido LONGTEXT     NOT NULL,
     activo    TINYINT(1)   NOT NULL DEFAULT 1,
-    UNIQUE KEY uq_nombre_version (nombre, version)
+    perfil_id INT          NULL,
+    UNIQUE KEY uq_perfil_nombre_version (perfil_id, nombre, version)
 );
 """
+
+CREATE_PERFILES = """
+CREATE TABLE IF NOT EXISTS perfiles (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL,
+    aseguradora VARCHAR(100) NOT NULL,
+    logo_url    VARCHAR(500),
+    activo      TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_perfil_nombre (nombre)
+);
+"""
+
+# Ontologías que pertenecen a un perfil (vs globales como autopilot-*)
+PROFILE_ONTOLOGIES = ("system-prompt", "ontologia-reglas", "ontologia-diferenciadores")
 
 # ── Datos mock: pólizas ──────────────────────────────────────────────────────
 
@@ -378,6 +394,29 @@ Cuando `buscar_poliza` devuelva los datos del cliente, tenlos en cuenta así:
 
 # ── Ejecución ────────────────────────────────────────────────────────────────
 
+def _column_exists(cur, table, column):
+    cur.execute("""
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = DATABASE() AND table_name = %s AND column_name = %s
+    """, (table, column))
+    return cur.fetchone()[0] > 0
+
+def _index_exists(cur, table, index):
+    cur.execute("""
+        SELECT COUNT(*) FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s
+    """, (table, index))
+    return cur.fetchone()[0] > 0
+
+def _fk_exists(cur, table, fk_name):
+    cur.execute("""
+        SELECT COUNT(*) FROM information_schema.table_constraints
+        WHERE table_schema = DATABASE() AND table_name = %s
+        AND constraint_name = %s AND constraint_type = 'FOREIGN KEY'
+    """, (table, fk_name))
+    return cur.fetchone()[0] > 0
+
+
 def setup():
     print("Conectando a MySQL...")
     conn = mysql.connector.connect(**DB_CONFIG)
@@ -385,6 +424,9 @@ def setup():
 
     print("Creando tabla polizas...")
     cur.execute(CREATE_POLIZAS)
+
+    print("Creando tabla perfiles...")
+    cur.execute(CREATE_PERFILES)
 
     print("Creando tabla ontologias...")
     cur.execute(CREATE_ONTOLOGIAS)
@@ -400,6 +442,57 @@ def setup():
         "ALTER TABLE polizas ADD COLUMN IF NOT EXISTS vinculacion     VARCHAR(20)",
     ]:
         cur.execute(col_def)
+
+    # ── Migración: añadir perfil_id a ontologias en BDs preexistentes ─────────
+    if not _column_exists(cur, "ontologias", "perfil_id"):
+        print("Migrando ontologias: añadiendo columna perfil_id...")
+        cur.execute("ALTER TABLE ontologias ADD COLUMN perfil_id INT NULL")
+
+    # Reemplazar índice único antiguo por el nuevo (perfil_id, nombre, version)
+    if _index_exists(cur, "ontologias", "uq_nombre_version"):
+        print("Eliminando índice antiguo uq_nombre_version...")
+        cur.execute("ALTER TABLE ontologias DROP INDEX uq_nombre_version")
+    if not _index_exists(cur, "ontologias", "uq_perfil_nombre_version"):
+        print("Creando índice uq_perfil_nombre_version...")
+        cur.execute("""
+            ALTER TABLE ontologias
+            ADD UNIQUE KEY uq_perfil_nombre_version (perfil_id, nombre, version)
+        """)
+
+    # FK perfil_id → perfiles.id (ON DELETE CASCADE)
+    if not _fk_exists(cur, "ontologias", "fk_ontologia_perfil"):
+        print("Creando FK fk_ontologia_perfil...")
+        try:
+            cur.execute("""
+                ALTER TABLE ontologias
+                ADD CONSTRAINT fk_ontologia_perfil
+                FOREIGN KEY (perfil_id) REFERENCES perfiles(id) ON DELETE CASCADE
+            """)
+        except mysql.connector.Error as e:
+            print(f"  (FK no creada: {e})")
+
+    # ── Insertar perfil default y migrar ontologías existentes ────────────────
+    print("Asegurando perfil 'Seguros Mundial' (default)...")
+    cur.execute("SELECT id FROM perfiles WHERE nombre = %s", ("Seguros Mundial",))
+    row = cur.fetchone()
+    if row:
+        perfil_id = row[0]
+        cur.execute("UPDATE perfiles SET activo = 1 WHERE id = %s", (perfil_id,))
+        cur.execute("UPDATE perfiles SET activo = 0 WHERE id <> %s", (perfil_id,))
+    else:
+        cur.execute("""
+            INSERT INTO perfiles (nombre, aseguradora, logo_url, activo)
+            VALUES (%s, %s, %s, %s)
+        """, ("Seguros Mundial", "Seguros Mundial", "/logos/logo.jpg", 1))
+        perfil_id = cur.lastrowid
+
+    print(f"Asignando ontologías de perfil al perfil_id={perfil_id}...")
+    cur.execute(f"""
+        UPDATE ontologias
+        SET perfil_id = %s
+        WHERE perfil_id IS NULL
+        AND nombre IN ({','.join(['%s'] * len(PROFILE_ONTOLOGIES))})
+    """, (perfil_id, *PROFILE_ONTOLOGIES))
 
     print("Insertando/actualizando pólizas mock...")
     for pol in POLIZAS_MOCK:
@@ -423,24 +516,24 @@ def setup():
 
     print("Insertando/actualizando ontologia-reglas...")
     cur.execute("""
-        INSERT INTO ontologias (nombre, version, contenido, activo)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO ontologias (nombre, version, contenido, activo, perfil_id)
+        VALUES (%s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE contenido = VALUES(contenido), activo = VALUES(activo)
-    """, ("ontologia-reglas", "1.0", ONTOLOGIA_REGLAS, 1))
+    """, ("ontologia-reglas", "1.0", ONTOLOGIA_REGLAS, 1, perfil_id))
 
     print("Insertando/actualizando ontologia-diferenciadores...")
     cur.execute("""
-        INSERT INTO ontologias (nombre, version, contenido, activo)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO ontologias (nombre, version, contenido, activo, perfil_id)
+        VALUES (%s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE contenido = VALUES(contenido), activo = VALUES(activo)
-    """, ("ontologia-diferenciadores", "1.0", ONTOLOGIA_DIFERENCIADORES, 1))
+    """, ("ontologia-diferenciadores", "1.0", ONTOLOGIA_DIFERENCIADORES, 1, perfil_id))
 
     print("Insertando/actualizando system-prompt...")
     cur.execute("""
-        INSERT INTO ontologias (nombre, version, contenido, activo)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO ontologias (nombre, version, contenido, activo, perfil_id)
+        VALUES (%s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE contenido = VALUES(contenido), activo = VALUES(activo)
-    """, ("system-prompt", "1.0", SYSTEM_PROMPT, 1))
+    """, ("system-prompt", "1.0", SYSTEM_PROMPT, 1, perfil_id))
 
     conn.commit()
     cur.close()

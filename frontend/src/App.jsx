@@ -3,6 +3,7 @@ import Header from "./components/Header"
 import AdminPanel from "./components/AdminPanel"
 import ChatPanel from "./components/ChatPanel"
 import AutopilotPanel from "./components/AutopilotPanel"
+import PerfilSelector from "./components/PerfilSelector"
 import "./App.css"
 
 const MIN_WIDTH = 360
@@ -22,6 +23,17 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme)
   }, [theme])
+
+  // Cuando el usuario cambia de perfil activo, resetear ChatPanel/AutopilotPanel
+  // (vía resetKey) y avisar al AdminPanel para que recargue las ontologías del nuevo perfil.
+  useEffect(() => {
+    function onPerfilChanged() {
+      setResetKey(k => k + 1)
+      window.dispatchEvent(new CustomEvent("ontologia-updated"))
+    }
+    window.addEventListener("perfil-changed", onPerfilChanged)
+    return () => window.removeEventListener("perfil-changed", onPerfilChanged)
+  }, [])
 
   function handleReset() {
     setResetKey(k => k + 1)
@@ -141,6 +153,8 @@ export default function App() {
                   </svg>
                 </span>
               </button>
+
+              <PerfilSelector />
             </div>
             {activeTab !== "user" && (
               <div className="center-hero">

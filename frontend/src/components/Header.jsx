@@ -1,6 +1,29 @@
+import { useState, useEffect } from "react"
 import "./Header.css"
 
+const API = import.meta.env.VITE_API_URL || "/api"
+const FALLBACK_LOGO = `${import.meta.env.BASE_URL}logos/logo.jpg`
+
 export default function Header({ loading, adminWidth }) {
+  const [logoUrl, setLogoUrl] = useState(FALLBACK_LOGO)
+
+  function loadActiveLogo() {
+    fetch(`${API}/perfiles`)
+      .then(r => r.json())
+      .then(data => {
+        const activo = data.find(p => p.activo)
+        setLogoUrl(activo?.logo_url || FALLBACK_LOGO)
+      })
+      .catch(() => setLogoUrl(FALLBACK_LOGO))
+  }
+
+  useEffect(() => {
+    loadActiveLogo()
+    function onPerfilChanged() { loadActiveLogo() }
+    window.addEventListener("perfil-changed", onPerfilChanged)
+    return () => window.removeEventListener("perfil-changed", onPerfilChanged)
+  }, [])
+
   return (
     <>
     <header className="header">
@@ -12,7 +35,7 @@ export default function Header({ loading, adminWidth }) {
       </div>
       <div className="header-right">
         <img
-          src={`${import.meta.env.BASE_URL}logos/logo.jpg`}
+          src={logoUrl}
           alt="Logo"
           className="header-logo"
           onError={e => { e.target.style.display = "none" }}

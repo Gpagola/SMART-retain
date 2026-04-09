@@ -44,11 +44,30 @@ def get_conn():
     return mysql.connector.connect(**DB_CONFIG)
 
 
+# ── Perfil activo ─────────────────────────────────────────────────────────────
+
+def get_active_perfil_id() -> int | None:
+    """Devuelve el id del perfil marcado como activo en la tabla perfiles."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM perfiles WHERE activo = TRUE ORDER BY id LIMIT 1")
+        row = cur.fetchone()
+        cur.close()
+    finally:
+        conn.close()
+    return row[0] if row else None
+
+
 # ── Ontology Cache ────────────────────────────────────────────────────────────
 _ontology_cache: dict = {}
 
 def preload_ontologies():
-    """Carga ontologías estáticas en memoria al arrancar para evitar consultas repetidas."""
+    """Carga ontologías del perfil activo en memoria al arrancar."""
+    perfil_id = get_active_perfil_id()
+    if perfil_id is None:
+        print("[preload_ontologies] No hay perfil activo. Saltando precarga.")
+        return
     names = ["ontologia-reglas", "ontologia-diferenciadores"]
     conn = get_conn()
     try:
@@ -56,9 +75,9 @@ def preload_ontologies():
         for name in names:
             cur.execute("""
                 SELECT contenido FROM ontologias
-                WHERE nombre = %s AND activo = TRUE
+                WHERE nombre = %s AND activo = TRUE AND perfil_id = %s
                 ORDER BY version DESC LIMIT 1
-            """, (name,))
+            """, (name, perfil_id))
             row = cur.fetchone()
             if row:
                 _ontology_cache[name] = row[0]
@@ -67,7 +86,7 @@ def preload_ontologies():
         conn.close()
 
 def invalidate_ontology_cache(nombre: str = None):
-    """Invalida el cache tras actualizar una ontología desde el admin."""
+    """Invalida el cache tras actualizar una ontología desde el admin o tras cambio de perfil."""
     if nombre:
         _ontology_cache.pop(nombre, None)
     else:
@@ -77,22 +96,27 @@ def invalidate_ontology_cache(nombre: str = None):
 # ── Carga del System Prompt desde la BD ───────────────────────────────────────
 
 def cargar_system_prompt() -> str:
-    """Carga la versión activa del system prompt desde la tabla ontologias."""
+    """Carga la versión activa del system prompt del perfil activo."""
+    perfil_id = get_active_perfil_id()
+    if perfil_id is None:
+        raise RuntimeError("No hay perfil activo en la tabla perfiles. Ejecuta setup_db.py.")
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute("""
             SELECT contenido FROM ontologias
-            WHERE nombre = 'system-prompt' AND activo = TRUE
+            WHERE nombre = 'system-prompt' AND activo = TRUE AND perfil_id = %s
             ORDER BY version DESC
             LIMIT 1
-        """)
+        """, (perfil_id,))
         row = cur.fetchone()
         cur.close()
     finally:
         conn.close()
     if not row:
-        raise RuntimeError("No se encontró 'system-prompt' activo en la base de datos. Ejecuta setup_db.py.")
+        raise RuntimeError(
+            f"No se encontró 'system-prompt' activo para perfil_id={perfil_id}. Ejecuta setup_db.py."
+        )
     return row[0]
 
 
@@ -151,15 +175,19 @@ def ontologia_reglas(nombre: str = "ontologia-reglas") -> str:
     if nombre in _ontology_cache:
         return _ontology_cache[nombre]
 
+    perfil_id = get_active_perfil_id()
+    if perfil_id is None:
+        return "No hay perfil activo configurado."
+
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute("""
             SELECT contenido FROM ontologias
-            WHERE nombre = %s AND activo = TRUE
+            WHERE nombre = %s AND activo = TRUE AND perfil_id = %s
             ORDER BY version DESC
             LIMIT 1
-        """, (nombre,))
+        """, (nombre, perfil_id))
         row = cur.fetchone()
         cur.close()
     finally:
@@ -179,15 +207,19 @@ def ontologia_diferenciadores() -> str:
     if cache_key in _ontology_cache:
         return _ontology_cache[cache_key]
 
+    perfil_id = get_active_perfil_id()
+    if perfil_id is None:
+        return "No hay perfil activo configurado."
+
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute("""
             SELECT contenido FROM ontologias
-            WHERE nombre = 'ontologia-diferenciadores' AND activo = TRUE
+            WHERE nombre = 'ontologia-diferenciadores' AND activo = TRUE AND perfil_id = %s
             ORDER BY version DESC
             LIMIT 1
-        """)
+        """, (perfil_id,))
         row = cur.fetchone()
         cur.close()
     finally:

@@ -14,10 +14,14 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 import pypdf
+import mysql.connector
 from openai import OpenAI
 from langchain_core.messages import HumanMessage
 
-from chatbot import build_agent, get_conn, preload_ontologies, invalidate_ontology_cache
+from chatbot import build_agent, get_conn, preload_ontologies, invalidate_ontology_cache, get_active_perfil_id
+
+# Ontologías que pertenecen a un perfil (vs globales como autopilot-*)
+PROFILE_ONTOLOGIES = ("system-prompt", "ontologia-reglas", "ontologia-diferenciadores")
 from autopilot import generar_caso_aleatorio, correr_conversacion, evaluar_conversacion, get_all_polizas, MOTIVOS, PERSONALIDADES
 
 load_dotenv()
@@ -428,48 +432,292 @@ Responde en español, de forma estructurada y concisa."""
     return response.choices[0].message.content
 
 
+# ── Endpoints de Perfiles ─────────────────────────────────────────────────────
+
+LOGOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logos")
+os.makedirs(LOGOS_DIR, exist_ok=True)
+
+
+def _reset_agent():
+    """Fuerza la reconstrucción del agente con el system-prompt del perfil activo."""
+    global _agent, _checkpointer
+    _agent = None
+    _checkpointer = None
+    invalidate_ontology_cache()
+
+
+@app.route("/api/perfiles", methods=["GET"])
+def listar_perfiles():
+    """Lista todos los perfiles. El frontend usa el flag activo para resaltar el actual."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, nombre, aseguradora, logo_url, activo
+            FROM perfiles
+            ORDER BY id
+        """)
+        rows = cur.fetchall()
+        cur.close()
+    finally:
+        conn.close()
+    return jsonify([
+        {"id": r[0], "nombre": r[1], "aseguradora": r[2], "logo_url": r[3], "activo": bool(r[4])}
+        for r in rows
+    ])
+
+
+@app.route("/api/perfiles", methods=["POST"])
+def crear_perfil():
+    """
+    Crea un perfil nuevo y le copia las ontologías del perfil indicado en
+    `copy_from_perfil_id` (por defecto, el perfil activo). Si no hay ninguno
+    para copiar, las inserta vacías.
+    Body: { nombre, aseguradora, logo_url?, copy_from_perfil_id? }
+    """
+    data = request.get_json() or {}
+    nombre      = (data.get("nombre") or "").strip()
+    aseguradora = (data.get("aseguradora") or "").strip()
+    logo_url    = (data.get("logo_url") or "").strip() or None
+    copy_from   = data.get("copy_from_perfil_id")
+
+    if not nombre or not aseguradora:
+        return jsonify({"error": "nombre y aseguradora son requeridos"}), 400
+
+    if copy_from is None:
+        copy_from = get_active_perfil_id()
+
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+
+        # Crear el perfil
+        try:
+            cur.execute("""
+                INSERT INTO perfiles (nombre, aseguradora, logo_url, activo)
+                VALUES (%s, %s, %s, 0)
+            """, (nombre, aseguradora, logo_url))
+        except mysql.connector.IntegrityError:
+            return jsonify({"error": f"Ya existe un perfil con el nombre '{nombre}'"}), 409
+
+        new_id = cur.lastrowid
+
+        # Copiar ontologías de perfil desde el perfil origen
+        for ont_nombre in PROFILE_ONTOLOGIES:
+            contenido = ""
+            if copy_from:
+                cur.execute("""
+                    SELECT contenido FROM ontologias
+                    WHERE nombre = %s AND activo = TRUE AND perfil_id = %s
+                    ORDER BY id DESC LIMIT 1
+                """, (ont_nombre, copy_from))
+                row = cur.fetchone()
+                if row:
+                    contenido = row[0]
+            cur.execute("""
+                INSERT INTO ontologias (nombre, version, contenido, activo, perfil_id)
+                VALUES (%s, '1.0', %s, TRUE, %s)
+            """, (ont_nombre, contenido, new_id))
+
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True, "id": new_id}), 201
+
+
+@app.route("/api/perfiles/<int:perfil_id>", methods=["PUT"])
+def actualizar_perfil(perfil_id):
+    """Actualiza metadatos del perfil. Body: { nombre?, aseguradora?, logo_url? }"""
+    data = request.get_json() or {}
+    fields = []
+    args = []
+    for key in ("nombre", "aseguradora", "logo_url"):
+        if key in data:
+            val = data[key]
+            if isinstance(val, str):
+                val = val.strip() or None
+            fields.append(f"{key} = %s")
+            args.append(val)
+    if not fields:
+        return jsonify({"error": "Nada para actualizar"}), 400
+
+    args.append(perfil_id)
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        try:
+            cur.execute(f"UPDATE perfiles SET {', '.join(fields)} WHERE id = %s", tuple(args))
+        except mysql.connector.IntegrityError:
+            return jsonify({"error": "Ya existe un perfil con ese nombre"}), 409
+        conn.commit()
+        affected = cur.rowcount
+        cur.close()
+    finally:
+        conn.close()
+
+    if affected == 0:
+        return jsonify({"error": "Perfil no encontrado"}), 404
+    return jsonify({"ok": True})
+
+
+@app.route("/api/perfiles/<int:perfil_id>", methods=["DELETE"])
+def borrar_perfil(perfil_id):
+    """
+    Elimina el perfil y, en cascada, sus ontologías (FK ON DELETE CASCADE).
+    Restricciones:
+    - No se puede borrar el perfil activo.
+    - Debe quedar al menos un perfil en el sistema.
+    """
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT activo FROM perfiles WHERE id = %s", (perfil_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            return jsonify({"error": "Perfil no encontrado"}), 404
+        if row[0]:
+            cur.close()
+            return jsonify({"error": "No se puede borrar el perfil activo. Activa otro primero."}), 400
+
+        cur.execute("SELECT COUNT(*) FROM perfiles")
+        if cur.fetchone()[0] <= 1:
+            cur.close()
+            return jsonify({"error": "Debe existir al menos un perfil"}), 400
+
+        cur.execute("DELETE FROM perfiles WHERE id = %s", (perfil_id,))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/perfiles/<int:perfil_id>/activate", methods=["POST"])
+def activar_perfil(perfil_id):
+    """Marca el perfil como activo (los demás quedan inactivos) y resetea el agente."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM perfiles WHERE id = %s", (perfil_id,))
+        if not cur.fetchone():
+            cur.close()
+            return jsonify({"error": "Perfil no encontrado"}), 404
+
+        cur.execute("UPDATE perfiles SET activo = 0")
+        cur.execute("UPDATE perfiles SET activo = 1 WHERE id = %s", (perfil_id,))
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
+
+    _reset_agent()
+    return jsonify({"ok": True, "id": perfil_id})
+
+
+@app.route("/api/perfiles/upload-logo", methods=["POST"])
+def upload_logo():
+    """Recibe un archivo de imagen y lo guarda en disco. Devuelve la URL pública."""
+    if "file" not in request.files:
+        return jsonify({"error": "No se recibió ningún archivo"}), 400
+
+    file = request.files["file"]
+    filename = file.filename or ""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp", "svg"):
+        return jsonify({"error": "Formato no soportado (jpg, png, webp, svg)"}), 400
+
+    safe_name = f"logo_{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(LOGOS_DIR, safe_name))
+    return jsonify({"logo_url": f"/api/logos/{safe_name}"})
+
+
+@app.route("/api/logos/<path:filename>", methods=["GET"])
+def serve_logo(filename):
+    """Sirve los logos guardados en LOGOS_DIR."""
+    from flask import send_from_directory
+    return send_from_directory(LOGOS_DIR, filename)
+
+
 # ── Endpoints de administración ───────────────────────────────────────────────
 
 @app.route("/api/ontologias", methods=["GET"])
 def listar_ontologias():
-    """Lista todos los registros activos de la tabla ontologias."""
+    """
+    Lista las ontologías activas:
+    - Las de perfil (system-prompt, ontologia-reglas, ontologia-diferenciadores)
+      filtradas por el perfil_id activo.
+    - Las globales (autopilot-*) con perfil_id IS NULL.
+    """
+    perfil_id = get_active_perfil_id()
     conn = get_conn()
     try:
         cur = conn.cursor()
+        # Ontologías de perfil
+        if perfil_id is not None:
+            cur.execute("""
+                SELECT o.nombre, o.version, o.contenido
+                FROM ontologias o
+                INNER JOIN (
+                    SELECT nombre, MAX(id) AS max_id
+                    FROM ontologias
+                    WHERE activo = TRUE AND perfil_id = %s
+                    GROUP BY nombre
+                ) latest ON o.id = latest.max_id
+                ORDER BY o.id
+            """, (perfil_id,))
+            perfil_rows = cur.fetchall()
+        else:
+            perfil_rows = []
+
+        # Ontologías globales
         cur.execute("""
             SELECT o.nombre, o.version, o.contenido
             FROM ontologias o
             INNER JOIN (
                 SELECT nombre, MAX(id) AS max_id
                 FROM ontologias
-                WHERE activo = TRUE
+                WHERE activo = TRUE AND perfil_id IS NULL
                 GROUP BY nombre
             ) latest ON o.id = latest.max_id
             ORDER BY o.id
         """)
-        rows = cur.fetchall()
+        global_rows = cur.fetchall()
         cur.close()
     finally:
         conn.close()
 
     return jsonify([
         {"nombre": r[0], "version": r[1], "contenido": r[2]}
-        for r in rows
+        for r in (*perfil_rows, *global_rows)
     ])
 
 
 def _guardar_nueva_version(nombre: str, contenido: str) -> str:
     """
     Desactiva la versión activa e inserta una nueva fila.
+    Las ontologías de perfil se guardan ligadas al perfil activo;
+    las globales (autopilot-*) se guardan con perfil_id NULL.
     Devuelve el número de versión nuevo.
     """
+    es_perfil = nombre in PROFILE_ONTOLOGIES
+    perfil_id = get_active_perfil_id() if es_perfil else None
+    if es_perfil and perfil_id is None:
+        raise RuntimeError(f"No hay perfil activo para guardar '{nombre}'.")
+
+    # Cláusula común: misma ontología en el mismo scope (perfil o global)
+    scope_clause = "perfil_id = %s" if es_perfil else "perfil_id IS NULL"
+    scope_args   = (perfil_id,) if es_perfil else ()
+
     conn = get_conn()
     try:
         cur = conn.cursor()
-        # Obtener versión actual
         cur.execute(
-            "SELECT version FROM ontologias WHERE nombre = %s AND activo = TRUE ORDER BY id DESC LIMIT 1",
-            (nombre,)
+            f"SELECT version FROM ontologias WHERE nombre = %s AND activo = TRUE AND {scope_clause} "
+            f"ORDER BY id DESC LIMIT 1",
+            (nombre, *scope_args)
         )
         row = cur.fetchone()
         version_actual = row[0] if row else "1.0"
@@ -479,12 +727,13 @@ def _guardar_nueva_version(nombre: str, contenido: str) -> str:
             nueva_version = "1.1"
 
         cur.execute(
-            "UPDATE ontologias SET activo = FALSE WHERE nombre = %s AND activo = TRUE",
-            (nombre,)
+            f"UPDATE ontologias SET activo = FALSE WHERE nombre = %s AND activo = TRUE AND {scope_clause}",
+            (nombre, *scope_args)
         )
         cur.execute(
-            "INSERT INTO ontologias (nombre, version, contenido, activo) VALUES (%s, %s, %s, TRUE)",
-            (nombre, nueva_version, contenido)
+            "INSERT INTO ontologias (nombre, version, contenido, activo, perfil_id) "
+            "VALUES (%s, %s, %s, TRUE, %s)",
+            (nombre, nueva_version, contenido, perfil_id)
         )
         conn.commit()
         cur.close()
@@ -583,13 +832,20 @@ def apply_recommendation():
     if not nombre:
         return jsonify({"error": f"nivel desconocido: {nivel}"}), 400
 
-    # Cargar contenido y versión actuales
+    # Cargar contenido y versión actuales (del perfil activo, ya que las 3
+    # ontologías mapeadas son siempre de perfil)
+    perfil_id = get_active_perfil_id()
+    if perfil_id is None:
+        return jsonify({"error": "No hay perfil activo"}), 400
+
     conn = get_conn()
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT contenido, version FROM ontologias WHERE nombre = %s AND activo = TRUE ORDER BY id DESC LIMIT 1",
-            (nombre,)
+            "SELECT contenido, version FROM ontologias "
+            "WHERE nombre = %s AND activo = TRUE AND perfil_id = %s "
+            "ORDER BY id DESC LIMIT 1",
+            (nombre, perfil_id)
         )
         row = cur.fetchone()
         cur.close()
@@ -597,7 +853,7 @@ def apply_recommendation():
         conn.close()
 
     if not row:
-        return jsonify({"error": f"No se encontró la ontología '{nombre}'"}), 404
+        return jsonify({"error": f"No se encontró la ontología '{nombre}' en el perfil activo"}), 404
 
     contenido_actual = row[0]
 
@@ -628,19 +884,33 @@ def apply_recommendation():
         f"Devuelve el texto completo de la ontología con el cambio aplicado."
     )
 
-    try:
-        resp = openai_client.chat.completions.create(
-            model="gpt-5.4",
-            messages=[
-                {"role": "system", "content": SYSTEM_APLICAR},
-                {"role": "user",   "content": prompt},
-            ],
-            reasoning={"effort": "low"},
-            max_completion_tokens=4000,
-        )
-        contenido_nuevo = resp.choices[0].message.content.strip()
-    except Exception as e:
-        return jsonify({"error": f"Error al generar cambio: {str(e)}"}), 500
+    contenido_nuevo = None
+    last_error = None
+    for model_name, use_mct in (("gpt-5.4", True), ("gpt-4o", False)):
+        try:
+            kwargs = dict(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": SYSTEM_APLICAR},
+                    {"role": "user",   "content": prompt},
+                ],
+            )
+            if use_mct:
+                kwargs["max_completion_tokens"] = 4000
+            else:
+                kwargs["max_tokens"]  = 4000
+                kwargs["temperature"] = 0.2
+            resp = openai_client.chat.completions.create(**kwargs)
+            contenido_nuevo = (resp.choices[0].message.content or "").strip()
+            print(f"[apply-recommendation] model={model_name} len={len(contenido_nuevo)}")
+            if contenido_nuevo:
+                break
+        except Exception as e:
+            last_error = e
+            print(f"[apply-recommendation] model={model_name} error: {e}")
+
+    if not contenido_nuevo:
+        return jsonify({"error": f"Error al generar cambio: {last_error or 'respuesta vacía'}"}), 500
 
     nueva_version = _guardar_nueva_version(nombre, contenido_nuevo)
     _on_ontology_changed(nombre)
