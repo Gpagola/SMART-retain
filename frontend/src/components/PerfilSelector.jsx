@@ -3,6 +3,13 @@ import "./PerfilSelector.css"
 
 const API = import.meta.env.VITE_API_URL || "/api"
 
+/** Resuelve logo_url (que viene como "/api/logos/...") al path correcto según VITE_API_URL */
+function resolveLogoUrl(url) {
+  if (!url) return ""
+  if (url.startsWith("/api/logos/")) return url.replace("/api/logos/", `${API}/logos/`)
+  return url
+}
+
 export default function PerfilSelector({ onPerfilChanged }) {
   const [perfiles, setPerfiles] = useState([])
   const [activo, setActivo]     = useState(null)
@@ -76,7 +83,7 @@ export default function PerfilSelector({ onPerfilChanged }) {
             >
               {p.logo_url && (
                 <img
-                  src={p.logo_url}
+                  src={resolveLogoUrl(p.logo_url)}
                   alt=""
                   className="perfil-logo-mini"
                   onError={e => { e.target.style.display = "none" }}
@@ -178,7 +185,7 @@ function PerfilManager({ perfiles, activoId, onClose }) {
           {perfiles.map(p => (
             <div key={p.id} className={`pm-row ${p.id === activoId ? "active" : ""}`}>
               {p.logo_url ? (
-                <img src={p.logo_url} alt="" className="pm-logo" onError={e => { e.target.style.display = "none" }} />
+                <img src={resolveLogoUrl(p.logo_url)} alt="" className="pm-logo" onError={e => { e.target.style.display = "none" }} />
               ) : (
                 <div className="pm-logo pm-logo-empty">{(p.aseguradora?.[0] || "?").toUpperCase()}</div>
               )}
@@ -221,7 +228,7 @@ function PerfilForm({ perfil, activoId, onCancel, onSaved }) {
   const isEdit = !!perfil
   const [nombre, setNombre]           = useState(perfil?.nombre || "")
   const [aseguradora, setAseguradora] = useState(perfil?.aseguradora || "")
-  const [logoUrl, setLogoUrl]         = useState(perfil?.logo_url || "")
+  const [logoUrl, setLogoUrl]         = useState(resolveLogoUrl(perfil?.logo_url || ""))
   const [saving, setSaving]           = useState(false)
   const [uploadingLogo, setUL]        = useState(false)
   const fileRef = useRef(null)
@@ -236,7 +243,7 @@ function PerfilForm({ perfil, activoId, onCancel, onSaved }) {
       const r = await fetch(`${API}/perfiles/upload-logo`, { method: "POST", body: fd })
       const data = await r.json()
       if (!r.ok) throw new Error(data.error || "Error al subir")
-      setLogoUrl(data.logo_url)
+      setLogoUrl(resolveLogoUrl(data.logo_url))
     } catch (err) {
       alert(err.message)
     } finally {

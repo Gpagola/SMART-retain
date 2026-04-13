@@ -4,6 +4,12 @@ import "./Header.css"
 const API = import.meta.env.VITE_API_URL || "/api"
 const FALLBACK_LOGO = `${import.meta.env.BASE_URL}logos/logo.jpg`
 
+function resolveLogoUrl(url) {
+  if (!url) return FALLBACK_LOGO
+  if (url.startsWith("/api/logos/")) return url.replace("/api/logos/", `${API}/logos/`)
+  return url
+}
+
 export default function Header({ loading, adminWidth }) {
   const [logoUrl, setLogoUrl] = useState(FALLBACK_LOGO)
 
@@ -12,7 +18,7 @@ export default function Header({ loading, adminWidth }) {
       .then(r => r.json())
       .then(data => {
         const activo = data.find(p => p.activo)
-        setLogoUrl(activo?.logo_url || FALLBACK_LOGO)
+        setLogoUrl(resolveLogoUrl(activo?.logo_url))
       })
       .catch(() => setLogoUrl(FALLBACK_LOGO))
   }
